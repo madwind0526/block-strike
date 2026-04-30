@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rolling Block Strike</title>
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="phone" aria-label="Rolling Block Strike game">
+      <header class="top-board">
+        <div class="mini-panel">
+          <span>Stage</span>
+          <strong id="stage-value">1</strong>
+        </div>
+        <h1 class="logo-title" aria-label="Rolling Block Strike">
+          <img src="assets/images/logo-rolling-block-strike.svg" alt="Rolling Block Strike" />
+        </h1>
+        <div class="score-panel">
+          <div class="mini-panel">
+            <span>Score</span>
+            <strong id="score-value">0</strong>
+          </div>
+          <div class="lives-panel">
+            <span>Lives</span>
+            <strong id="lives-value">3</strong>
+          </div>
+        </div>
+      </header>
+
+      <canvas id="game" width="486" height="760"></canvas>
+
+      <div class="item-bar">
+        <button id="btn-pause" class="item pause" type="button" aria-label="Pause">II</button>
+        <div class="item power">
+          <span class="item-icon rocket"><img src="assets/images/item-rocket.svg" alt="" /></span>
+          <strong id="rocket-value">0</strong>
+        </div>
+        <div class="item power status">
+          <span class="item-icon slow"><img src="assets/images/item-slow.svg" alt="" /></span>
+          <strong id="slow-value">0</strong>
+        </div>
+        <div class="item power">
+          <span class="item-icon x3"><img src="assets/images/item-x3.svg" alt="" /></span>
+          <strong id="x3-value">0</strong>
+        </div>
+        <div class="item power">
+          <span class="item-icon wide"><img src="assets/images/item-wide.svg" alt="" /></span>
+          <strong id="wide-value">0</strong>
+        </div>
+        <div class="item power">
+          <span class="item-icon bomb"><img src="assets/images/item-bomb.svg" alt="" /></span>
+          <strong id="bomb-value">3</strong>
+        </div>
+        <div class="item power">
+          <span class="item-icon shield"><img src="assets/images/item-shield.svg" alt="" /></span>
+          <strong id="shield-value">0</strong>
+        </div>
+      </div>
+
+      <p class="hint">Break the main face. Hidden power blocks can turn one clean bounce into a strike.</p>
+    </section>
+  </main>
+
+  <script src="src/game.js"></script>
+</body>
+</html>

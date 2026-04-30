@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 150">
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="7" stdDeviation="4" flood-color="#000" flood-opacity=".65"/>
+    </filter>
+    <linearGradient id="yellow" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffe96f"/><stop offset=".55" stop-color="#ffba29"/><stop offset="1" stop-color="#e96b16"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#9cf7ff"/><stop offset=".55" stop-color="#20d2ff"/><stop offset="1" stop-color="#087bd1"/>
+    </linearGradient>
+    <radialGradient id="ball" cx=".35" cy=".28" r=".7">
+      <stop offset="0" stop-color="#fff"/><stop offset=".2" stop-color="#a8f5ff"/><stop offset=".62" stop-color="#20bff2"/><stop offset="1" stop-color="#0565ad"/>
+    </radialGradient>
+  </defs>
+  <g filter="url(#shadow)" font-family="Arial Black, Impact, sans-serif" font-weight="900" stroke="#07101e" stroke-width="4" paint-order="stroke">
+    <text x="36" y="48" font-size="42" fill="url(#yellow)" transform="rotate(-5 36 48)">Rolling</text>
+    <text x="49" y="87" font-size="43" fill="url(#cyan)" transform="rotate(-5 49 87)">Block</text>
+    <text x="58" y="126" font-size="43" fill="#fff" transform="rotate(-5 58 126)">Strike</text>
+  </g>
+  <circle cx="187" cy="30" r="25" fill="url(#ball)" filter="url(#shadow)"/>
+  <path d="M9 54h38M3 68h46M11 82h34" stroke="#2bcaff" stroke-width="4" stroke-linecap="round" opacity=".18"/>
+</svg>
