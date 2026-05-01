@@ -17,9 +17,11 @@ const MAX_LIVES = 5;
 const EXPLOSION_RADIUS = BLOCK_W * 2;
 const BASE_PADDLE_W = 115;
 const WIDE_DURATION = 20000;
-const INITIAL_STAGE = 28;
-const INITIAL_SCORE = 16450;
+const PADDLE_BOUNCE_INFLUENCE = 1.4;
+const INITIAL_STAGE = 1;
+const INITIAL_SCORE = 0;
 const LEADERBOARD_KEY = "rollingBlockStrikeLeaderboard";
+const LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const LEADERBOARD_LIMIT = 10;
 const SAMPLE_LEADERBOARD = [
   { name: "HJ, SHIN", score: "1265987452325654788", stage: 26987425 },
@@ -33,14 +35,11 @@ const SAMPLE_LEADERBOARD = [
   { name: "RYU", score: 7650000, stage: 244 },
   { name: "JIN", score: 5120000, stage: 198 },
 ];
-const SPECIAL_COUNTS = {
-  rocket: 3,
-  slow: 4,
-  x3: 3,
-  wide: 3,
-  bomb: 3,
-  shield: 2,
-};
+const SPECIAL_BLOCK_TOTAL = 5;
+const BREAKABLE_SPECIAL_TYPES = ["rocket", "slow", "x3", "wide", "bomb"];
+const SPECIAL_TYPE_SET = new Set([...BREAKABLE_SPECIAL_TYPES, "shield"]);
+const INFI_BLOCK_START_STAGE = 10;
+const MAX_INFI_BLOCKS = 7;
 
 const hud = {
   stage: document.getElementById("stage-value"),
@@ -60,12 +59,30 @@ const overlay = {
   logo: document.querySelector(".overlay-logo"),
   title: document.getElementById("overlay-title"),
   gameover: document.getElementById("overlay-gameover"),
+  nextStage: document.getElementById("overlay-nextstage"),
   topRanks: document.getElementById("overlay-topranks"),
   score: document.getElementById("overlay-score"),
   prompt: document.getElementById("overlay-prompt"),
   nameEntry: document.getElementById("name-entry"),
   nameInput: document.getElementById("player-name"),
   rankList: document.getElementById("rank-list"),
+};
+
+const debugUi = {
+  root: document.getElementById("debug-overlay"),
+  panel: document.getElementById("debug-panel"),
+  command: document.getElementById("debug-command"),
+  stageField: document.getElementById("debug-stage-field"),
+  stage: document.getElementById("debug-stage"),
+  cancel: document.getElementById("debug-cancel"),
+};
+
+const cheatStatus = {
+  root: document.getElementById("cheat-status"),
+  godMode: document.querySelector('[data-cheat="godMode"]'),
+  fullLives: document.querySelector('[data-cheat="fullLives"]'),
+  immortal: document.querySelector('[data-cheat="immortal"]'),
+  jumpTo: document.querySelector('[data-cheat="jumpTo"]'),
 };
 
 const keys = new Set();
@@ -78,13 +95,18 @@ const state = {
   stageNumber: INITIAL_STAGE,
   score: INITIAL_SCORE,
   lives: 3,
+  immortal: false,
+  godMode: false,
+  fullLivesCheat: false,
+  jumpToCheat: false,
+  jumpToStage: INITIAL_STAGE,
   paused: false,
   waitingLaunch: true,
   stageMessage: "Press Space",
   messageTimer: 0,
-  slowUntil: 0,
   wideUntil: 0,
-  bombCharges: 0,
+  paddleHits: 0,
+  speedSteps: 0,
   rockets: [],
   paddle: {
     x: W / 2 - BASE_PADDLE_W / 2,
@@ -92,13 +114,18 @@ const state = {
     w: BASE_PADDLE_W,
     h: 40,
     speed: 420,
+    vx: 0,
   },
   balls: [],
   particles: [],
+  scorePopups: [],
   explosions: [],
   stage: null,
   pendingRankScore: 0,
   pendingRankStage: INITIAL_STAGE,
+  pendingNextStage: INITIAL_STAGE,
+  cheatUsed: false,
+  debugPreviousPaused: false,
 };
 
 const iconSources = {
@@ -128,6 +155,33 @@ const icons = Object.fromEntries(
 const paddleImg = new Image();
 paddleImg.src = "assets/images/paddle.png";
 
+const soundSources = {
+  paddle: "assets/sounds/PaddleHit.mp3",
+  bomb: "assets/sounds/Bomb.mp3",
+  block: "assets/sounds/BlockHit.mp3",
+  infi: "assets/sounds/InfiBlockHit.mp3",
+  rocket: "assets/sounds/Rocket.mp3",
+  slow: "assets/sounds/SlowHit.mp3",
+  wide: "assets/sounds/WiderHit.mp3",
+  gameStart: "assets/sounds/GameStart.mp3",
+  gameOver: "assets/sounds/GameOver.mp3",
+  rank: "assets/sounds/Rank.mp3",
+  stageStart: "assets/sounds/StageStart.mp3",
+};
+
+const sounds = Object.fromEntries(
+  Object.entries(soundSources).map(([key, src]) => {
+    const audio = new Audio(src);
+    audio.preload = "auto";
+    audio.volume = 0.75;
+    return [key, audio];
+  })
+);
+let audioUnlocked = false;
+let loopSound = null;
+let loopSoundName = null;
+let loopSoundToken = 0;
+
 const palettes = {
   red: ["#ff8d82", "#ef342e"],
   orange: ["#ffc15b", "#ff7f22"],
@@ -143,11 +197,86 @@ const palettes = {
   wide: ["#eef7ff", "#2f9de8"],
   shield: ["#565d66", "#101721"],
 };
-const normalColors = ["red", "orange", "green", "yellow", "blue", "purple"];
-const normalNumbers = [20, 30, 40, 50, 60, 70, 80];
+const normalLevels = [
+  { value: 20, color: "yellow", shade: 0 },
+  { value: 30, color: "orange", shade: 0 },
+  { value: 40, color: "green", shade: 0 },
+  { value: 50, color: "blue", shade: 0 },
+  { value: 60, color: "red", shade: 0 },
+  { value: 70, color: "purple", shade: 0 },
+  { value: 80, color: "purple", shade: 0.14 },
+  { value: 90, color: "purple", shade: 0.28 },
+];
+const normalNumbers = normalLevels.map(level => level.value);
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  if (loopSound) loopSound.muted = false;
+  Object.values(sounds).forEach(audio => {
+    audio.load();
+  });
+  resumeModeSound();
+}
+
+function playSound(name) {
+  const source = sounds[name] || sounds.block;
+  if (!source) return;
+  const audio = source.cloneNode();
+  audio.volume = source.volume;
+  audio.play().catch(() => {});
+}
+
+function stopLoopSound() {
+  loopSoundToken++;
+  if (!loopSound) return;
+  loopSound.pause();
+  loopSound.currentTime = 0;
+  loopSound = null;
+  loopSoundName = null;
+}
+
+function playLoopSound(name) {
+  if (loopSoundName === name && loopSound && !loopSound.paused) return;
+  stopLoopSound();
+  const source = sounds[name];
+  if (!source) return;
+  const token = ++loopSoundToken;
+  loopSound = source.cloneNode();
+  loopSound.loop = true;
+  loopSound.muted = !audioUnlocked;
+  loopSound.volume = Math.min(source.volume, 0.58);
+  loopSoundName = name;
+  const pendingLoop = loopSound;
+  pendingLoop.play().then(() => {
+    if (token !== loopSoundToken || loopSound !== pendingLoop) {
+      pendingLoop.pause();
+      pendingLoop.currentTime = 0;
+      return;
+    }
+    if (pendingLoop.muted) {
+      setTimeout(() => {
+        if (token === loopSoundToken && loopSound === pendingLoop) pendingLoop.muted = false;
+      }, 120);
+    }
+  }).catch(() => {
+    if (token === loopSoundToken && loopSound === pendingLoop) {
+      loopSound = null;
+      loopSoundName = null;
+    }
+  });
+}
+
+function resumeModeSound() {
+  if (state.mode === "intro") {
+    playLoopSound("gameStart");
+  } else if (state.mode === "ranking") {
+    playLoopSound("rank");
+  }
 }
 
 function rand(seed) {
@@ -170,10 +299,11 @@ function makeBall(x = state.paddle.x + state.paddle.w / 2, y = state.paddle.y - 
 
 function createBlock(row, col, stageNumber, faceIndex, pattern, label) {
   const isShield = pattern === "shield";
-  const special = Object.prototype.hasOwnProperty.call(SPECIAL_COUNTS, pattern) ? pattern : null;
+  const special = SPECIAL_TYPE_SET.has(pattern) ? pattern : null;
   const x = GRID_X + col * (BLOCK_W + BLOCK_GAP);
   const y = GRID_Y + row * (BLOCK_H + BLOCK_GAP);
   const hp = blockHp(label);
+  const scoreValue = special ? specialScore(stageNumber, faceIndex, row, col) : blockScore(label);
 
   if (isShield) {
     return {
@@ -188,6 +318,7 @@ function createBlock(row, col, stageNumber, faceIndex, pattern, label) {
       col,
       pattern,
       label: "X",
+      scoreValue: 0,
       special: "shield",
       alive: true,
     };
@@ -205,6 +336,8 @@ function createBlock(row, col, stageNumber, faceIndex, pattern, label) {
     col,
     pattern,
     label: special ? specialLabel(special) : label,
+    shade: special ? 0 : normalShadeForNumber(label),
+    scoreValue,
     special,
     alive: true,
   };
@@ -213,7 +346,22 @@ function createBlock(row, col, stageNumber, faceIndex, pattern, label) {
 function blockHp(label) {
   const value = Number.parseInt(label, 10);
   if (Number.isNaN(value)) return 1;
-  return Math.max(1, Math.round(value / 20));
+  const levelIndex = normalNumbers.indexOf(value);
+  if (levelIndex !== -1) return levelIndex + 1;
+  return Math.max(1, Math.round(value / 10) - 1);
+}
+
+function blockScore(label) {
+  const value = Number.parseInt(label, 10);
+  return Number.isNaN(value) ? 0 : Math.max(0, value);
+}
+
+function specialScore(stageNumber, faceIndex, row, col) {
+  return 1 + Math.floor(rand(stageNumber * 853 + faceIndex * 149 + row * 43 + col * 67) * 100);
+}
+
+function infiHitScore(stageNumber, row, col) {
+  return 1 + Math.floor(rand(stageNumber * 487 + row * 59 + col * 83 + performance.now() * 0.017) * 10);
 }
 
 function specialLabel(special) {
@@ -231,8 +379,8 @@ function buildFace(stageNumber, faceIndex) {
     for (let col = 0; col < BLOCK_COLS; col++) {
       const key = `${row}:${col}`;
       const special = specialMap.get(key);
-      const pattern = special || randomNormalColor(stageNumber, faceIndex, row, col);
       const label = special ? specialLabel(special) : String(randomNormalNumber(stageNumber, faceIndex, row, col));
+      const pattern = special || normalColorForNumber(label);
       blocks.push(createBlock(row, col, stageNumber, faceIndex, pattern, label));
     }
   }
@@ -249,24 +397,50 @@ function buildSpecialMap(stageNumber, faceIndex) {
   cells.sort((a, b) => a.score - b.score);
 
   const map = new Map();
-  let index = 0;
-  Object.entries(SPECIAL_COUNTS).forEach(([special, count]) => {
-    for (let i = 0; i < count; i++) {
-      const cell = cells[index++];
-      map.set(`${cell.row}:${cell.col}`, special);
-    }
-  });
-  return map;
-}
+  let cellIndex = 0;
+  const shields = Math.min(infiBlockCount(stageNumber), cells.length);
+  for (let index = 0; index < shields; index++) {
+    const cell = cells[cellIndex++];
+    map.set(`${cell.row}:${cell.col}`, "shield");
+  }
 
-function randomNormalColor(stageNumber, faceIndex, row, col) {
-  const value = rand(stageNumber * 131 + faceIndex * 41 + row * 13 + col * 29);
-  return normalColors[Math.floor(value * normalColors.length)];
+  const total = Math.min(SPECIAL_BLOCK_TOTAL, cells.length);
+  for (let index = 0; index < total; index++) {
+    const cell = cells[cellIndex++];
+    if (!cell) break;
+    const typeSeed = stageNumber * 733 + faceIndex * 97 + index * 19;
+    const specialIndex = Math.floor(rand(typeSeed) * BREAKABLE_SPECIAL_TYPES.length);
+    map.set(`${cell.row}:${cell.col}`, BREAKABLE_SPECIAL_TYPES[specialIndex]);
+  }
+  return map;
 }
 
 function randomNormalNumber(stageNumber, faceIndex, row, col) {
   const value = rand(stageNumber * 197 + faceIndex * 53 + row * 23 + col * 31);
-  return normalNumbers[Math.floor(value * normalNumbers.length)];
+  const maxLevel = maxNormalBlockLevel(stageNumber);
+  return normalNumbers[Math.floor(value * maxLevel)];
+}
+
+function normalLevelForNumber(label) {
+  const value = Number.parseInt(label, 10);
+  return normalLevels.find(level => level.value === value) || normalLevels[0];
+}
+
+function normalColorForNumber(label) {
+  return normalLevelForNumber(label).color;
+}
+
+function normalShadeForNumber(label) {
+  return normalLevelForNumber(label).shade;
+}
+
+function maxNormalBlockLevel(stageNumber) {
+  return clamp(2 + Math.floor((stageNumber - 1) / 5), 2, normalNumbers.length);
+}
+
+function infiBlockCount(stageNumber) {
+  if (stageNumber < INFI_BLOCK_START_STAGE) return 0;
+  return Math.min(MAX_INFI_BLOCKS, Math.floor((stageNumber - INFI_BLOCK_START_STAGE) / 5) + 1);
 }
 
 function buildStage(number) {
@@ -284,6 +458,9 @@ function activeFace() {
 function resetBallAndPaddle() {
   state.paddle.w = BASE_PADDLE_W;
   state.paddle.x = W / 2 - state.paddle.w / 2;
+  state.paddle.vx = 0;
+  state.paddleHits = 0;
+  state.speedSteps = 0;
   state.balls = [makeBall()];
   state.waitingLaunch = true;
 }
@@ -291,18 +468,23 @@ function resetBallAndPaddle() {
 function startStage(number) {
   state.stageNumber = number;
   state.stage = buildStage(number);
-  state.bombCharges = 0;
-  state.slowUntil = 0;
   state.wideUntil = 0;
   state.rockets = [];
   resetBallAndPaddle();
   setMessage(`Stage ${number}`, 1.2);
+  if (state.mode === "playing") playSound("stageStart");
 }
 
 function startGame() {
   state.mode = "playing";
   state.score = INITIAL_SCORE;
   state.lives = 3;
+  state.immortal = false;
+  state.godMode = false;
+  state.fullLivesCheat = false;
+  state.jumpToCheat = false;
+  state.jumpToStage = INITIAL_STAGE;
+  state.cheatUsed = false;
   state.paused = false;
   state.pendingRankScore = 0;
   startStage(INITIAL_STAGE);
@@ -321,13 +503,50 @@ function launchBalls() {
   state.balls.forEach((ball, i) => {
     ball.stuck = false;
     const angle = -Math.PI / 2 + (i - 0.5) * 0.18;
-    const speed = ball.baseSpeed;
+    const speed = ballTravelSpeed(ball);
     ball.vx = Math.cos(angle) * speed;
     ball.vy = Math.sin(angle) * speed;
   });
 }
 
+function speedMultiplier() {
+  return clamp(1 + state.speedSteps * 0.1, 0.5, 3);
+}
+
+function ballTravelSpeed(ball) {
+  return ball.baseSpeed * speedMultiplier();
+}
+
+function setBallSpeed(ball, speed) {
+  const angle = Math.atan2(ball.vy, ball.vx);
+  if (!Number.isFinite(angle)) return;
+  ball.vx = Math.cos(angle) * speed;
+  ball.vy = Math.sin(angle) * speed;
+}
+
+function applyCurrentSpeedToBalls() {
+  state.balls.forEach(ball => {
+    if (!ball.stuck) setBallSpeed(ball, ballTravelSpeed(ball));
+  });
+}
+
+function registerPaddleHit() {
+  state.paddleHits++;
+  if (state.paddleHits % 10 !== 0) return;
+  state.speedSteps++;
+  applyCurrentSpeedToBalls();
+  const percent = Math.round((speedMultiplier() - 1) * 100);
+  setMessage(percent === 0 ? "Speed Normal" : `Speed ${percent >= 0 ? "+" : ""}${percent}%`, 0.9);
+}
+
+function applySlowBlock() {
+  state.speedSteps = state.speedSteps > 0 ? 0 : -1;
+  state.paddleHits = 0;
+  applyCurrentSpeedToBalls();
+}
+
 function updatePaddle(dt) {
+  const previousCenter = state.paddle.x + state.paddle.w / 2;
   const center = state.paddle.x + state.paddle.w / 2;
   const targetWidth = performance.now() < state.wideUntil ? Math.round(BASE_PADDLE_W * 1.3) : BASE_PADDLE_W;
   if (state.paddle.w !== targetWidth) {
@@ -342,6 +561,8 @@ function updatePaddle(dt) {
   state.paddle.x += dx * state.paddle.speed * dt;
   if (pointerX !== null) state.paddle.x += (pointerX - state.paddle.w / 2 - state.paddle.x) * Math.min(1, dt * 14);
   state.paddle.x = clamp(state.paddle.x, 24, W - state.paddle.w - 24);
+  const currentCenter = state.paddle.x + state.paddle.w / 2;
+  state.paddle.vx = dt > 0 ? (currentCenter - previousCenter) / dt : 0;
 
   if (state.waitingLaunch) {
     state.balls.forEach(ball => {
@@ -362,20 +583,52 @@ function circleRectHit(ball, rect) {
 function damageBlock(block, amount = 1, source = "ball") {
   if (!block.alive) return false;
   if (block.type === "solid") {
+    playSound("infi");
+    const points = infiHitScore(state.stageNumber, block.row, block.col);
+    addScore(points, block.x + block.w / 2, block.y + block.h / 2);
     burst(block.x + block.w / 2, block.y + block.h / 2, "#aeb6c6", 6);
     return false;
   }
 
-  block.hp -= amount;
+  const damage = state.godMode && source !== "bomb" ? block.hp : amount;
+  block.hp -= damage;
+  if (block.hp > 0) playSound("block");
   burst(block.x + block.w / 2, block.y + block.h / 2, blockColor(block)[0], 8);
   if (block.hp <= 0) {
     block.alive = false;
-    state.score += 100 + state.stageNumber * 7;
+    playBlockBreakSound(block);
+    addScore(block.scoreValue, block.x + block.w / 2, block.y + block.h / 2);
     activateSpecial(block, source);
     burst(block.x + block.w / 2, block.y + block.h / 2, "#ffffff", 12);
     return true;
   }
   return false;
+}
+
+function playBlockBreakSound(block) {
+  if (block.special === "rocket") {
+    playSound("rocket");
+  } else if (block.special === "slow") {
+    playSound("slow");
+  } else if (block.special === "wide") {
+    playSound("wide");
+  } else if (block.special !== "bomb") {
+    playSound("block");
+  }
+}
+
+function addScore(points, x, y) {
+  const amount = Math.max(0, Math.floor(points));
+  if (amount <= 0) return;
+  state.score += amount;
+  state.scorePopups.push({
+    text: `+${amount}`,
+    x,
+    y,
+    vy: -32,
+    life: 0.85,
+    maxLife: 0.85,
+  });
 }
 
 function activateSpecial(block) {
@@ -384,11 +637,11 @@ function activateSpecial(block) {
     splitBalls();
     setMessage("x3 Multiball", 1.4);
   } else if (block.special === "slow") {
-    state.slowUntil = performance.now() + 8000;
+    applySlowBlock();
     setMessage("Slow Motion", 1.4);
   } else if (block.special === "bomb") {
-    state.bombCharges = Math.min(state.bombCharges + 3, 6);
-    setMessage("Bomb Ball Ready", 1.4);
+    explodeAtBlock(block);
+    setMessage("Bomb Blast", 1.4);
   } else if (block.special === "wide") {
     state.wideUntil = performance.now() + WIDE_DURATION;
     setMessage("Wide Bar", 1.4);
@@ -416,15 +669,16 @@ function splitBalls() {
   });
 }
 
-function explodeAt(x, y) {
-  const radius = EXPLOSION_RADIUS;
+function explodeAtBlock(originBlock) {
+  const x = originBlock.x + originBlock.w / 2;
+  const y = originBlock.y + originBlock.h / 2;
+  const radius = BLOCK_W * 1.45;
+  playSound("bomb");
   state.explosions.push({ x, y, radius, life: 0.48, age: 0 });
   activeFace().blocks.forEach(block => {
-    if (!block.alive || block.type === "solid") return;
-    const cx = block.x + block.w / 2;
-    const cy = block.y + block.h / 2;
-    const dist = Math.hypot(cx - x, cy - y);
-    if (dist <= radius) damageBlock(block, 1, "bomb");
+    if (!block.alive) return;
+    const distance = Math.abs(block.row - originBlock.row) + Math.abs(block.col - originBlock.col);
+    if (distance === 1) damageBlock(block, 1, "bomb");
   });
   burst(x, y, "#ff6f7f", 42);
 }
@@ -439,7 +693,7 @@ function fireRocket() {
 
   for (const block of targets) {
     if (block.type === "solid") {
-      burst(block.x + block.w / 2, block.y + block.h / 2, "#aeb6c6", 12);
+      damageBlock(block, 1, "rocket");
       break;
     }
     damageBlock(block, block.hp, "rocket");
@@ -447,7 +701,6 @@ function fireRocket() {
 }
 
 function updateBalls(dt) {
-  const slow = performance.now() < state.slowUntil ? 0.64 : 1;
   const remaining = [];
 
   for (const ball of state.balls) {
@@ -456,8 +709,8 @@ function updateBalls(dt) {
       continue;
     }
 
-    ball.x += ball.vx * dt * slow;
-    ball.y += ball.vy * dt * slow;
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
 
     if (ball.x - ball.r < 18) {
       ball.x = 18 + ball.r;
@@ -473,11 +726,15 @@ function updateBalls(dt) {
     }
 
     if (circleRectHit(ball, state.paddle) && ball.vy > 0) {
-      const hit = (ball.x - (state.paddle.x + state.paddle.w / 2)) / (state.paddle.w / 2);
-      const speed = Math.hypot(ball.vx, ball.vy);
-      const angle = -Math.PI / 2 + hit * 0.82;
-      ball.vx = Math.cos(angle) * speed;
-      ball.vy = Math.sin(angle) * speed;
+      playSound("paddle");
+      const incomingSpeed = Math.hypot(ball.vx, ball.vy) || ball.baseSpeed;
+      const incomingVxRatio = ball.vx / incomingSpeed;
+      registerPaddleHit();
+      const speed = ballTravelSpeed(ball);
+      const paddleInfluence = clamp(state.paddle.vx / state.paddle.speed, -1, 1) * speed * PADDLE_BOUNCE_INFLUENCE;
+      const nextVx = clamp(incomingVxRatio * speed + paddleInfluence, -speed * 0.92, speed * 0.92);
+      ball.vx = nextVx;
+      ball.vy = -Math.sqrt(Math.max(0, speed * speed - nextVx * nextVx));
       ball.y = state.paddle.y - ball.r - 1;
       burst(ball.x, ball.y + 8, "#78e3ff", 5);
     }
@@ -485,17 +742,11 @@ function updateBalls(dt) {
     const blocks = activeFace().blocks;
     for (const block of blocks) {
       if (!block.alive || !circleRectHit(ball, block)) continue;
-      const prevX = ball.x - ball.vx * dt * slow;
-      const prevY = ball.y - ball.vy * dt * slow;
+      const prevX = ball.x - ball.vx * dt;
+      const prevY = ball.y - ball.vy * dt;
       if (prevY <= block.y || prevY >= block.y + block.h) ball.vy *= -1;
       else ball.vx *= -1;
-      if (state.bombCharges > 0 && block.type !== "solid") {
-        state.bombCharges--;
-        damageBlock(block, 1);
-        explodeAt(block.x + block.w / 2, block.y + block.h / 2);
-      } else {
-        damageBlock(block, 1);
-      }
+      damageBlock(block, 1);
       break;
     }
 
@@ -507,6 +758,11 @@ function updateBalls(dt) {
 }
 
 function loseLife() {
+  if (state.immortal) {
+    resetBallAndPaddle();
+    setMessage("Immortal", 1.2);
+    return;
+  }
   state.lives--;
   if (state.lives <= 0) {
     finishGame();
@@ -531,8 +787,20 @@ function isStageClear() {
 
 function nextStage() {
   const next = state.stageNumber + 1;
+  state.mode = "stageClear";
+  state.paused = true;
+  state.pendingNextStage = next;
+  showNextStageScreen(next);
+}
+
+function continueNextStage() {
+  const next = state.pendingNextStage || state.stageNumber + 1;
   if (next % 5 === 1 && next > 1) state.lives = Math.min(MAX_LIVES, state.lives + 1);
+  state.mode = "playing";
+  state.paused = false;
   startStage(next);
+  state.messageTimer = 0;
+  hideOverlay();
 }
 
 function updateParticles(dt) {
@@ -542,6 +810,12 @@ function updateParticles(dt) {
     p.y += p.vy * dt;
     p.vy += 80 * dt;
     return p.life > 0;
+  });
+
+  state.scorePopups = state.scorePopups.filter(popup => {
+    popup.life -= dt;
+    popup.y += popup.vy * dt;
+    return popup.life > 0;
   });
 
   state.rockets.forEach(rocket => {
@@ -712,6 +986,14 @@ function drawBlock(block) {
     drawBlockFallback(block);
   }
 
+  if (block.type === "normal" && block.shade > 0) {
+    ctx.save();
+    roundRect(block.x, block.y, block.w, block.h, 4);
+    ctx.fillStyle = `rgba(0,0,0,${block.shade})`;
+    ctx.fill();
+    ctx.restore();
+  }
+
   if (block.type !== "solid" && !block.special && block.label) {
     drawBlockLabel(block);
   }
@@ -812,6 +1094,25 @@ function drawParticles() {
   ctx.globalAlpha = 1;
 }
 
+function drawScorePopups() {
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "900 20px DS-Digital, DS-DIGIB, Inter, Arial, sans-serif";
+  for (const popup of state.scorePopups) {
+    const progress = 1 - popup.life / popup.maxLife;
+    ctx.globalAlpha = clamp(popup.life / popup.maxLife, 0, 1);
+    ctx.shadowColor = "#4df3ff";
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(0,18,34,0.78)";
+    ctx.fillStyle = "#eaffff";
+    ctx.strokeText(popup.text, popup.x, popup.y - progress * 8);
+    ctx.fillText(popup.text, popup.x, popup.y - progress * 8);
+  }
+  ctx.restore();
+}
+
 function drawExplosions() {
   for (const explosion of state.explosions) {
     const progress = 1 - explosion.life / 0.48;
@@ -888,10 +1189,12 @@ function drawMessage() {
 
 function loadLeaderboard() {
   try {
-    const saved = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || "[]");
-    const source = Array.isArray(saved) && saved.length
-      ? [...saved, ...SAMPLE_LEADERBOARD]
-      : SAMPLE_LEADERBOARD;
+    const sampleDisabled = localStorage.getItem(LEADERBOARD_SAMPLE_DISABLED_KEY) === "1";
+    const raw = localStorage.getItem(LEADERBOARD_KEY);
+    const saved = raw === null ? null : JSON.parse(raw);
+    const source = Array.isArray(saved)
+      ? (saved.length && !sampleDisabled ? [...saved, ...SAMPLE_LEADERBOARD] : saved)
+      : (sampleDisabled ? [] : SAMPLE_LEADERBOARD);
     return source
       .filter(entry => typeof entry?.name === "string" && toScoreBigInt(entry?.score) !== null)
       .map(entry => ({ name: entry.name, score: entry.score, stage: Number.isFinite(entry.stage) ? entry.stage : null }))
@@ -904,12 +1207,21 @@ function loadLeaderboard() {
 
 function saveLeaderboard(entries) {
   localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries.slice(0, LEADERBOARD_LIMIT)));
+  localStorage.setItem(LEADERBOARD_SAMPLE_DISABLED_KEY, "1");
+}
+
+function resetPlayerData() {
+  state.score = 0;
+  state.pendingRankScore = 0;
+  localStorage.setItem(LEADERBOARD_KEY, "[]");
+  localStorage.setItem(LEADERBOARD_SAMPLE_DISABLED_KEY, "1");
 }
 
 function rankForScore(score) {
   const board = loadLeaderboard();
   const betterScores = board.filter(entry => compareScores(entry.score, score) > 0).length;
-  return Math.min(999, betterScores + 1);
+  const rank = betterScores + 1;
+  return rank > LEADERBOARD_LIMIT && board.length >= LEADERBOARD_LIMIT ? "Over 10" : rank;
 }
 
 function qualifiesForLeaderboard(score) {
@@ -945,17 +1257,21 @@ function renderLeaderboard(entries = loadLeaderboard()) {
 }
 
 function hideOverlay() {
+  stopLoopSound();
   overlay.root.className = "screen-overlay hidden";
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
+  overlay.nextStage.style.display = "";
   overlay.topRanks.style.display = "";
 }
 
 function showIntro() {
   state.mode = "intro";
+  playLoopSound("gameStart");
   overlay.root.className = "screen-overlay intro-screen";
   overlay.logo.style.display = "block";
   overlay.gameover.style.display = "";
+  overlay.nextStage.style.display = "";
   overlay.topRanks.style.display = "";
   overlay.title.textContent = "";
   overlay.score.textContent = "";
@@ -965,22 +1281,28 @@ function showIntro() {
 }
 
 function showGameOver() {
+  stopLoopSound();
+  playSound("gameOver");
   overlay.root.className = "screen-overlay gameover-screen";
   overlay.logo.style.display = "none";
   overlay.gameover.style.display = "block";
+  overlay.nextStage.style.display = "";
   overlay.title.textContent = "";
   overlay.score.textContent = `Score ${formatScore(state.pendingRankScore)}`;
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
 
-  if (qualifiesForLeaderboard(state.pendingRankScore)) {
+  if (!state.cheatUsed && qualifiesForLeaderboard(state.pendingRankScore)) {
     state.mode = "nameEntry";
     overlay.prompt.textContent = "Enter Name";
     overlay.nameEntry.classList.add("visible");
     overlay.nameInput.value = "";
     overlay.nameInput.focus();
-  } else {
+  } else if (!state.cheatUsed) {
     showRankingScreen();
+  } else {
+    state.mode = "gameover";
+    overlay.prompt.textContent = "Press Enter to Start Again";
   }
 }
 
@@ -994,9 +1316,11 @@ function submitPlayerName() {
 function showRankingScreen(entries = loadLeaderboard()) {
   state.mode = "ranking";
   state.paused = true;
+  playLoopSound("rank");
   overlay.root.className = "screen-overlay ranking-screen";
   overlay.logo.style.display = "none";
   overlay.gameover.style.display = "none";
+  overlay.nextStage.style.display = "none";
   overlay.topRanks.style.display = "block";
   overlay.title.textContent = "";
   overlay.score.textContent = "";
@@ -1004,6 +1328,20 @@ function showRankingScreen(entries = loadLeaderboard()) {
   renderLeaderboard(entries);
   overlay.rankList.classList.add("visible");
   overlay.prompt.textContent = "Press Enter to Start Again";
+}
+
+function showNextStageScreen(stageNumber) {
+  stopLoopSound();
+  overlay.root.className = "screen-overlay stageclear-screen";
+  overlay.logo.style.display = "none";
+  overlay.gameover.style.display = "none";
+  overlay.nextStage.style.display = "block";
+  overlay.topRanks.style.display = "";
+  overlay.title.textContent = "";
+  overlay.score.textContent = `Stage ${stageNumber}`;
+  overlay.nameEntry.classList.remove("visible");
+  overlay.rankList.classList.remove("visible");
+  overlay.prompt.textContent = "Press Enter to Continue";
 }
 
 function formatScore(value) {
@@ -1069,6 +1407,7 @@ function render() {
   drawPaddle();
   state.balls.forEach(drawBall);
   drawParticles();
+  drawScorePopups();
   drawMessage();
 }
 
@@ -1088,6 +1427,16 @@ function updateHud() {
   hud.wide.textContent = counts.wide;
   hud.bomb.textContent = counts.bomb;
   hud.shield.textContent = counts.shield;
+  updateCheatStatus();
+}
+
+function updateCheatStatus() {
+  cheatStatus.root.classList.toggle("hidden", !state.cheatUsed);
+  cheatStatus.root.setAttribute("aria-hidden", String(!state.cheatUsed));
+  cheatStatus.godMode.classList.toggle("active", state.godMode);
+  cheatStatus.fullLives.classList.toggle("active", state.fullLivesCheat);
+  cheatStatus.immortal.classList.toggle("active", state.immortal);
+  cheatStatus.jumpTo.classList.toggle("active", state.jumpToCheat);
 }
 
 function countRemainingSpecials() {
@@ -1105,6 +1454,104 @@ function togglePause() {
   if (state.mode !== "playing") return;
   state.paused = !state.paused;
   setMessage(state.paused ? "Paused" : "Resume", 0.8);
+}
+
+function handleSpaceAction() {
+  if (state.mode !== "playing") return;
+  if (state.waitingLaunch) {
+    launchBalls();
+    return;
+  }
+  togglePause();
+}
+
+function confirmScreenAction() {
+  if (state.mode === "intro" || state.mode === "ranking" || state.mode === "gameover") {
+    startGame();
+  } else if (state.mode === "nameEntry") {
+    submitPlayerName();
+  } else if (state.mode === "stageClear") {
+    continueNextStage();
+  }
+}
+
+function isCheatKey(event) {
+  return event.key === "?" || (event.code === "Slash" && event.shiftKey);
+}
+
+function openCommandMode() {
+  if (state.mode !== "playing") return;
+  state.debugPreviousPaused = state.paused;
+  state.paused = true;
+  setMessage("Command Mode", 1);
+  debugUi.stage.value = String(state.stageNumber);
+  updateDebugStageField();
+  debugUi.root.classList.remove("hidden");
+  debugUi.root.setAttribute("aria-hidden", "false");
+  debugUi.command.focus();
+}
+
+function closeCommandMode({ restorePause = true } = {}) {
+  debugUi.root.classList.add("hidden");
+  debugUi.root.setAttribute("aria-hidden", "true");
+  if (restorePause && state.mode === "playing") {
+    state.paused = state.debugPreviousPaused;
+  }
+}
+
+function updateDebugStageField() {
+  const isJump = debugUi.command.value === "jumpTo";
+  debugUi.stageField.classList.toggle("hidden", !isJump);
+}
+
+function applyDebugCommand() {
+  const selected = debugUi.command.value;
+  const command = selected === "jumpTo" ? `jumpTo ${debugUi.stage.value}` : selected;
+  closeCommandMode({ restorePause: false });
+  runDebugCommand(command.trim());
+}
+
+function runDebugCommand(command) {
+  const [name, ...args] = command.split(/\s+/).filter(Boolean);
+  if (!name) return;
+  const normalized = name.toLowerCase();
+  state.cheatUsed = true;
+
+  if (normalized === "immortal") {
+    state.immortal = true;
+    setMessage("Immortal On", 1.4);
+  } else if (normalized === "godmode") {
+    state.godMode = true;
+    setMessage("God Mode On", 1.4);
+  } else if (normalized === "fulllives") {
+    state.lives = MAX_LIVES;
+    state.fullLivesCheat = true;
+    setMessage("Full Lives", 1.4);
+  } else if (normalized === "jumpto") {
+    const stage = Number.parseInt(args[0], 10);
+    if (!Number.isFinite(stage) || stage < 1) {
+      setMessage("Invalid Stage", 1.4);
+      return;
+    }
+    state.mode = "playing";
+    state.paused = false;
+    state.jumpToCheat = true;
+    state.jumpToStage = stage;
+    hideOverlay();
+    startStage(stage);
+    setMessage(`Jump To ${stage}`, 1.4);
+  } else if (normalized === "resetdata") {
+    resetPlayerData();
+    setMessage("Data Reset", 1.4);
+  } else if (normalized === "showrank") {
+    showRankingScreen();
+  } else if (normalized === "goodgame") {
+    state.pendingRankScore = state.score;
+    state.pendingRankStage = state.stageNumber;
+    showGameOver();
+  } else {
+    setMessage("Unknown Command", 1.4);
+  }
 }
 
 function update(dt) {
@@ -1126,18 +1573,27 @@ function loop(now) {
 }
 
 window.addEventListener("keydown", (event) => {
+  unlockAudio();
+  if (!debugUi.root.classList.contains("hidden")) {
+    if (event.code === "Escape") {
+      event.preventDefault();
+      closeCommandMode();
+    }
+    return;
+  }
+  if (isCheatKey(event) && state.mode === "playing") {
+    event.preventDefault();
+    openCommandMode();
+    return;
+  }
   keys.add(event.code);
   if (event.code === "Enter") {
     event.preventDefault();
-    if (state.mode === "intro" || state.mode === "ranking" || state.mode === "gameover") {
-      startGame();
-    } else if (state.mode === "nameEntry") {
-      submitPlayerName();
-    }
+    confirmScreenAction();
   }
   if (event.code === "Space" && state.mode === "playing") {
     event.preventDefault();
-    launchBalls();
+    if (!event.repeat) handleSpaceAction();
   }
   if (event.code === "KeyP" && state.mode === "playing") {
     togglePause();
@@ -1152,12 +1608,32 @@ overlay.nameInput.addEventListener("input", () => {
   overlay.nameInput.value = sanitizePlayerName(overlay.nameInput.value);
 });
 
+debugUi.command.addEventListener("change", updateDebugStageField);
+debugUi.cancel.addEventListener("click", () => closeCommandMode());
+debugUi.panel.addEventListener("submit", (event) => {
+  event.preventDefault();
+  applyDebugCommand();
+});
+debugUi.root.addEventListener("pointerdown", (event) => {
+  if (event.target === debugUi.root) closeCommandMode();
+});
+
+overlay.root.addEventListener("pointerdown", (event) => {
+  unlockAudio();
+  if (event.target === overlay.nameInput) return;
+  if (state.mode === "intro" || state.mode === "ranking" || state.mode === "gameover" || state.mode === "stageClear") {
+    event.preventDefault();
+    confirmScreenAction();
+  }
+});
+
 canvas.addEventListener("pointermove", (event) => {
   const rect = canvas.getBoundingClientRect();
   pointerX = (event.clientX - rect.left) * (W / rect.width);
 });
 
 canvas.addEventListener("pointerdown", () => {
+  unlockAudio();
   if (state.mode === "playing") launchBalls();
 });
 canvas.addEventListener("pointerleave", () => { pointerX = null; });
@@ -1182,6 +1658,11 @@ if (initialScreen === "ranking") {
   overlay.prompt.textContent = "Press Enter to Start Again";
   state.mode = "gameover";
   state.paused = true;
+} else if (initialScreen === "nextstage") {
+  state.pendingNextStage = state.stageNumber + 1;
+  state.mode = "stageClear";
+  state.paused = true;
+  showNextStageScreen(state.pendingNextStage);
 } else {
   showIntro();
 }

@@ -374,6 +374,15 @@ body {
   gap: 18px;
 }
 
+.stageclear-screen {
+  align-content: center;
+  gap: 54px;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(42, 147, 255, 0.2), transparent 45%),
+    rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(6px);
+}
+
 .ranking-screen {
   gap: 16px;
   padding: 20px 18px;
@@ -381,6 +390,166 @@ body {
 
 .screen-overlay.hidden {
   display: none;
+}
+
+.cheat-status {
+  position: absolute;
+  right: 36px;
+  bottom: 134px;
+  z-index: 8;
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px 7px;
+  border: 1px solid rgba(128, 239, 255, 0.28);
+  border-radius: 9px;
+  background: rgba(2, 9, 18, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 16px rgba(88, 236, 255, 0.1);
+  pointer-events: none;
+}
+
+.cheat-status.hidden {
+  display: none;
+}
+
+.cheat-status div {
+  color: rgba(145, 156, 169, 0.62);
+  font-family: "DSDigital", Bahnschrift, "Cascadia Mono", monospace;
+  font-size: 15px;
+  line-height: 1;
+  text-align: left;
+  text-transform: uppercase;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.7);
+}
+
+.cheat-status div.active {
+  color: #ffffff;
+  text-shadow:
+    0 0 8px rgba(88, 236, 255, 0.56),
+    0 2px 3px rgba(0, 0, 0, 0.78);
+}
+
+.debug-overlay {
+  position: absolute;
+  inset: 12px;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  border-radius: 27px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(42, 147, 255, 0.24), transparent 45%),
+    rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.debug-overlay.hidden {
+  display: none;
+}
+
+.debug-panel {
+  width: min(390px, 94%);
+  display: grid;
+  gap: 17px;
+  padding: 24px 22px 21px;
+  border: 2px solid rgba(128, 239, 255, 0.72);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(24, 58, 96, 0.96), rgba(4, 13, 25, 0.98)),
+    #061427;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -18px 28px rgba(0, 0, 0, 0.38),
+    0 18px 36px rgba(0, 0, 0, 0.62),
+    0 0 24px rgba(88, 236, 255, 0.2);
+}
+
+.debug-title,
+.debug-field span,
+.debug-actions button,
+.debug-field select,
+.debug-field input {
+  font-family: "DSDigital", Bahnschrift, "Cascadia Mono", monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.debug-title {
+  color: #ffffff;
+  font-size: 32px;
+  line-height: 1;
+  text-align: center;
+  text-shadow:
+    0 0 12px rgba(88, 236, 255, 0.44),
+    0 3px 5px rgba(0, 0, 0, 0.72);
+}
+
+.debug-field {
+  display: grid;
+  gap: 7px;
+  color: #ffffff;
+  text-align: left;
+}
+
+.debug-field.hidden {
+  display: none;
+}
+
+.debug-field span {
+  font-size: 18px;
+  text-shadow: 0 0 9px rgba(88, 236, 255, 0.24);
+}
+
+.debug-field select,
+.debug-field input {
+  width: 100%;
+  min-height: 44px;
+  border: 2px solid rgba(128, 239, 255, 0.68);
+  border-radius: 10px;
+  padding: 7px 10px 5px;
+  background: rgba(3, 12, 23, 0.94);
+  color: var(--hud-value);
+  font-size: 26px;
+  outline: none;
+  box-shadow:
+    inset 0 2px 9px rgba(0, 0, 0, 0.62),
+    0 0 14px rgba(88, 236, 255, 0.18);
+}
+
+.debug-field select:focus,
+.debug-field input:focus {
+  border-color: rgba(255, 255, 255, 0.84);
+  box-shadow:
+    inset 0 2px 9px rgba(0, 0, 0, 0.62),
+    0 0 18px rgba(88, 236, 255, 0.36);
+}
+
+.debug-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.debug-actions button {
+  min-height: 45px;
+  border: 2px solid rgba(107, 160, 222, 0.58);
+  border-radius: 11px;
+  background:
+    linear-gradient(180deg, rgba(47, 83, 134, 0.98), rgba(8, 19, 35, 0.98)),
+    #0d2039;
+  color: #ffffff;
+  font-size: 23px;
+  cursor: pointer;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    0 7px 11px rgba(0, 0, 0, 0.42);
+}
+
+.debug-actions button[type="submit"] {
+  border-color: rgba(128, 239, 255, 0.72);
+  color: var(--hud-value);
 }
 
 .overlay-logo {
@@ -412,6 +581,19 @@ body {
 }
 
 .gameover-screen .overlay-gameover {
+  display: block;
+}
+
+.overlay-nextstage {
+  display: none;
+  width: min(90%, 390px);
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 16px rgba(0, 0, 0, 0.78))
+    drop-shadow(0 0 18px rgba(255, 67, 194, 0.28));
+}
+
+.stageclear-screen .overlay-nextstage {
   display: block;
 }
 
