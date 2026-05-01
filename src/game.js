@@ -6,11 +6,12 @@ const H = canvas.height;
 const TOP_GAP = 70;
 const BLOCK_COLS = 7;
 const BLOCK_ROWS = 5;
-const BLOCK_W = 70;
-const BLOCK_H = 70;
-const BLOCK_GAP = 1;
-const GRID_W = BLOCK_COLS * BLOCK_W + (BLOCK_COLS - 1) * BLOCK_GAP;
-const GRID_X = (W - GRID_W) / 2;
+const GRID_MARGIN_X = 26;
+const BLOCK_GAP = 4;
+const GRID_W = W - GRID_MARGIN_X * 2;
+const BLOCK_W = (GRID_W - (BLOCK_COLS - 1) * BLOCK_GAP) / BLOCK_COLS;
+const BLOCK_H = BLOCK_W;
+const GRID_X = GRID_MARGIN_X;
 const GRID_Y = TOP_GAP;
 const MAX_LIVES = 5;
 const EXPLOSION_RADIUS = BLOCK_W * 2;
@@ -27,6 +28,7 @@ const SPECIAL_COUNTS = {
 
 const hud = {
   stage: document.getElementById("stage-value"),
+  rank: document.getElementById("rank-value"),
   score: document.getElementById("score-value"),
   lives: document.getElementById("lives-value"),
   rocket: document.getElementById("rocket-value"),
@@ -40,6 +42,7 @@ const hud = {
 const keys = new Set();
 let pointerX = null;
 let lastTime = performance.now();
+const imageTrims = new WeakMap();
 
 const state = {
   stageNumber: 28,
@@ -84,6 +87,7 @@ const iconSources = {
 const icons = Object.fromEntries(
   Object.entries(iconSources).map(([key, src]) => {
     const image = new Image();
+    image.addEventListener("load", () => cacheImageTrim(image));
     image.src = src;
     return [key, image];
   })
@@ -119,7 +123,7 @@ function rand(seed) {
   return x - Math.floor(x);
 }
 
-function makeBall(x = state.paddle.x + state.paddle.w / 2, y = state.paddle.y - 12, angle = -Math.PI / 2) {
+function makeBall(x = state.paddle.x + state.paddle.w / 2, y = state.paddle.y - 17, angle = -Math.PI / 2) {
   const speed = 280 + Math.min(state.stageNumber * 2, 80);
   return {
     x,
@@ -299,7 +303,7 @@ function updatePaddle(dt) {
   if (state.waitingLaunch) {
     state.balls.forEach(ball => {
       ball.x = state.paddle.x + state.paddle.w / 2;
-      ball.y = state.paddle.y - 116;
+      ball.y = state.paddle.y - ball.r - 2;
     });
   }
 }
@@ -578,25 +582,85 @@ function roundRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
+function cacheImageTrim(image) {
+  const offscreen = document.createElement("canvas");
+  offscreen.width = image.naturalWidth;
+  offscreen.height = image.naturalHeight;
+  const offscreenCtx = offscreen.getContext("2d", { willReadFrequently: true });
+  offscreenCtx.drawImage(image, 0, 0);
+  const data = offscreenCtx.getImageData(0, 0, offscreen.width, offscreen.height).data;
+  let minX = offscreen.width;
+  let minY = offscreen.height;
+  let maxX = -1;
+  let maxY = -1;
+  let visualMinX = offscreen.width;
+  let visualMinY = offscreen.height;
+  let visualMaxX = -1;
+  let visualMaxY = -1;
+
+  for (let y = 0; y < offscreen.height; y++) {
+    for (let x = 0; x < offscreen.width; x++) {
+      const alpha = data[(y * offscreen.width + x) * 4 + 3];
+      if (alpha <= 18) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      if (alpha > 96) {
+        visualMinX = Math.min(visualMinX, x);
+        visualMinY = Math.min(visualMinY, y);
+        visualMaxX = Math.max(visualMaxX, x);
+        visualMaxY = Math.max(visualMaxY, y);
+      }
+    }
+  }
+
+  if (maxX < minX) {
+    imageTrims.set(image, { sx: 0, sy: 0, sw: image.naturalWidth, sh: image.naturalHeight, cx: 0.5, cy: 0.5 });
+    return;
+  }
+
+  const trim = { sx: minX, sy: minY, sw: maxX - minX + 1, sh: maxY - minY + 1 };
+  const visualCx = visualMaxX >= visualMinX ? (visualMinX + visualMaxX + 1) / 2 : trim.sx + trim.sw / 2;
+  const visualCy = visualMaxY >= visualMinY ? (visualMinY + visualMaxY + 1) / 2 : trim.sy + trim.sh / 2;
+  imageTrims.set(image, {
+    ...trim,
+    cx: (visualCx - trim.sx) / trim.sw,
+    cy: (visualCy - trim.sy) / trim.sh,
+  });
+}
+
+function drawTrimmedImage(image, x, y, w, h) {
+  const trim = imageTrims.get(image) || { sx: 0, sy: 0, sw: image.naturalWidth, sh: image.naturalHeight, cx: 0.5, cy: 0.5 };
+  const dx = x + w / 2 - trim.cx * w;
+  const dy = y + h / 2 - trim.cy * h;
+  ctx.drawImage(image, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, w, h);
+}
+
+function drawBlockFallback(block) {
+  const [top, bottom] = blockColor(block);
+  ctx.shadowColor = "rgba(0,0,0,0.68)";
+  ctx.shadowBlur = 7;
+  ctx.shadowOffsetY = 4;
+  roundRect(block.x, block.y, block.w, block.h, 4);
+  const g = ctx.createLinearGradient(block.x, block.y, block.x, block.y + block.h);
+  g.addColorStop(0, "rgba(255,255,255,0.92)");
+  g.addColorStop(0.12, top);
+  g.addColorStop(0.7, bottom);
+  g.addColorStop(1, "rgba(0,0,0,0.34)");
+  ctx.fillStyle = g;
+  ctx.fill();
+}
+
 function drawBlock(block) {
   if (!block.alive) return;
-  const [top, bottom] = blockColor(block);
   ctx.save();
   const image = icons[block.pattern];
-  if (image?.complete) {
-    ctx.drawImage(image, block.x, block.y, block.w, block.h);
+
+  if (image?.complete && image.naturalWidth > 0) {
+    drawTrimmedImage(image, block.x, block.y, block.w, block.h);
   } else {
-    ctx.shadowColor = "rgba(0,0,0,0.68)";
-    ctx.shadowBlur = 7;
-    ctx.shadowOffsetY = 4;
-    roundRect(block.x, block.y, block.w, block.h, 4);
-    const g = ctx.createLinearGradient(block.x, block.y, block.x, block.y + block.h);
-    g.addColorStop(0, "rgba(255,255,255,0.92)");
-    g.addColorStop(0.12, top);
-    g.addColorStop(0.7, bottom);
-    g.addColorStop(1, "rgba(0,0,0,0.34)");
-    ctx.fillStyle = g;
-    ctx.fill();
+    drawBlockFallback(block);
   }
 
   if (block.type !== "solid" && !block.special && block.label) {
@@ -773,6 +837,21 @@ function drawMessage() {
   ctx.restore();
 }
 
+function formatScore(value) {
+  const abs = Math.abs(value);
+  const units = [
+    { value: 1_000_000_000, suffix: "G" },
+    { value: 1_000_000, suffix: "M" },
+    { value: 100_000, suffix: "K" },
+  ];
+  const unit = units.find(item => abs >= item.value);
+  if (!unit) return value.toLocaleString();
+
+  const scaled = value / unit.value;
+  const digits = Math.abs(scaled) >= 100 ? 0 : Math.abs(scaled) >= 10 ? 1 : 2;
+  return `${scaled.toFixed(digits).replace(/\.0+$|(\.\d)0$/, "$1")}${unit.suffix}`;
+}
+
 function render() {
   drawBackground();
   activeFace().blocks.forEach(drawBlock);
@@ -786,7 +865,8 @@ function render() {
 
 function updateHud() {
   hud.stage.textContent = state.stageNumber;
-  hud.score.textContent = state.score.toLocaleString();
+  hud.rank.textContent = Math.max(1, 300 - state.stageNumber * 3 - Math.floor(state.score / 200));
+  hud.score.textContent = formatScore(state.score);
   hud.lives.innerHTML = Array.from({ length: MAX_LIVES }, (_, i) =>
     i < state.lives
       ? '<img src="assets/images/heart-filled.png" alt="life" />'
