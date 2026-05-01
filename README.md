@@ -82,6 +82,8 @@ The lower-right cheat status overlay shows `godMode`, `fullLives`, `Immortal`, a
 - `GameOver.mp3`: one-shot sound when the game ends.
 - `Rank.mp3`: Top Ranks screen loop.
 - `StageStart.mp3`: one-shot sound when a stage starts.
+- `Rolling1.mp3`: block rolling sound.
+- `Rolling2.mp3`: reserved for four-face screen rotation.
 
 ## Current Blocks And Power Blocks
 
@@ -180,21 +182,24 @@ Each normal block requires hits equal to its level. For example, level 1 breaks 
 
 Rolling starts after time has passed on the current face.
 
-- 10 seconds: bottom row rotates one cell to the right.
-- 20 seconds:
+- Implemented for the current single active face.
+- Rolling time starts after the ball is launched.
+- 20 seconds: bottom row rotates one cell to the right.
+- 40 seconds:
   - bottom row rotates right
   - second row rotates left
-- 30 seconds:
+- 60 seconds:
   - bottom row rotates right
   - second row rotates left
   - third row rotates right
-- 40 seconds:
+- 80 seconds:
   - bottom row rotates right
   - second row rotates left
   - third row rotates right
   - fourth row rotates left
 
 This pattern continues by row, alternating direction.
+If rolling moves a block onto the ball, the ball is moved downward to the nearest open position.
 
 ## Four-Face Rotation Plan
 

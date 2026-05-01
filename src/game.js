@@ -17,6 +17,7 @@ const MAX_LIVES = 5;
 const EXPLOSION_RADIUS = BLOCK_W * 2;
 const BASE_PADDLE_W = 115;
 const WIDE_DURATION = 20000;
+const ROLL_INTERVAL = 20;
 const PADDLE_BOUNCE_INFLUENCE = 1.4;
 const INITIAL_STAGE = 1;
 const INITIAL_SCORE = 0;
@@ -167,6 +168,8 @@ const soundSources = {
   gameOver: "assets/sounds/GameOver.mp3",
   rank: "assets/sounds/Rank.mp3",
   stageStart: "assets/sounds/StageStart.mp3",
+  rollingBlocks: "assets/sounds/Rolling1.mp3",
+  rollingFace: "assets/sounds/Rolling2.mp3",
 };
 
 const sounds = Object.fromEntries(
@@ -384,7 +387,7 @@ function buildFace(stageNumber, faceIndex) {
       blocks.push(createBlock(row, col, stageNumber, faceIndex, pattern, label));
     }
   }
-  return { blocks };
+  return { blocks, rollElapsed: 0, rollTicks: 0 };
 }
 
 function buildSpecialMap(stageNumber, faceIndex) {
@@ -453,6 +456,55 @@ function buildStage(number) {
 
 function activeFace() {
   return state.stage.faces[state.stage.activeFaceIndex];
+}
+
+function updateRollingBlocks(dt) {
+  if (state.waitingLaunch) return;
+  const face = activeFace();
+  face.rollElapsed += dt;
+
+  const targetTicks = Math.floor(face.rollElapsed / ROLL_INTERVAL);
+  while (face.rollTicks < targetTicks) {
+    face.rollTicks++;
+    rollActiveRows(face, face.rollTicks);
+  }
+}
+
+function rollActiveRows(face, tick) {
+  playSound("rollingBlocks");
+  const activeRows = Math.min(BLOCK_ROWS, tick);
+  for (let offset = 0; offset < activeRows; offset++) {
+    const row = BLOCK_ROWS - 1 - offset;
+    const direction = offset % 2 === 0 ? 1 : -1;
+    rollRow(face, row, direction);
+  }
+  resolveBallsAfterRolling();
+  setMessage("Rolling", 0.7);
+}
+
+function rollRow(face, row, direction) {
+  const rowBlocks = face.blocks
+    .filter(block => block.row === row)
+    .sort((a, b) => a.col - b.col);
+
+  rowBlocks.forEach(block => {
+    block.col = (block.col + direction + BLOCK_COLS) % BLOCK_COLS;
+    block.x = GRID_X + block.col * (BLOCK_W + BLOCK_GAP);
+  });
+}
+
+function resolveBallsAfterRolling() {
+  state.balls.forEach(ball => {
+    if (ball.stuck) return;
+    let guard = 0;
+    while (guard < BLOCK_ROWS) {
+      const hit = activeFace().blocks.find(block => block.alive && circleRectHit(ball, block));
+      if (!hit) break;
+      ball.y = hit.y + hit.h + ball.r + 1;
+      guard++;
+    }
+    ball.y = Math.min(ball.y, state.paddle.y - ball.r - 2);
+  });
 }
 
 function resetBallAndPaddle() {
@@ -578,6 +630,46 @@ function circleRectHit(ball, rect) {
   const dx = ball.x - nearestX;
   const dy = ball.y - nearestY;
   return dx * dx + dy * dy <= ball.r * ball.r;
+}
+
+function resolveBlockBounce(ball, block, prevX, prevY) {
+  const epsilon = 0.5;
+
+  if (prevY + ball.r <= block.y && ball.vy > 0) {
+    ball.y = block.y - ball.r - epsilon;
+    ball.vy = -Math.abs(ball.vy);
+    return;
+  }
+  if (prevY - ball.r >= block.y + block.h && ball.vy < 0) {
+    ball.y = block.y + block.h + ball.r + epsilon;
+    ball.vy = Math.abs(ball.vy);
+    return;
+  }
+  if (prevX + ball.r <= block.x && ball.vx > 0) {
+    ball.x = block.x - ball.r - epsilon;
+    ball.vx = -Math.abs(ball.vx);
+    return;
+  }
+  if (prevX - ball.r >= block.x + block.w && ball.vx < 0) {
+    ball.x = block.x + block.w + ball.r + epsilon;
+    ball.vx = Math.abs(ball.vx);
+    return;
+  }
+
+  const blockCenterX = block.x + block.w / 2;
+  const blockCenterY = block.y + block.h / 2;
+  const dx = ball.x - blockCenterX;
+  const dy = ball.y - blockCenterY;
+  const overlapX = block.w / 2 + ball.r - Math.abs(dx);
+  const overlapY = block.h / 2 + ball.r - Math.abs(dy);
+
+  if (overlapX < overlapY) {
+    ball.x += dx < 0 ? -overlapX - epsilon : overlapX + epsilon;
+    ball.vx = dx < 0 ? -Math.abs(ball.vx) : Math.abs(ball.vx);
+  } else {
+    ball.y += dy < 0 ? -overlapY - epsilon : overlapY + epsilon;
+    ball.vy = dy < 0 ? -Math.abs(ball.vy) : Math.abs(ball.vy);
+  }
 }
 
 function damageBlock(block, amount = 1, source = "ball") {
@@ -744,8 +836,7 @@ function updateBalls(dt) {
       if (!block.alive || !circleRectHit(ball, block)) continue;
       const prevX = ball.x - ball.vx * dt;
       const prevY = ball.y - ball.vy * dt;
-      if (prevY <= block.y || prevY >= block.y + block.h) ball.vy *= -1;
-      else ball.vx *= -1;
+      resolveBlockBounce(ball, block, prevX, prevY);
       damageBlock(block, 1);
       break;
     }
@@ -1557,6 +1648,7 @@ function runDebugCommand(command) {
 function update(dt) {
   if (state.mode !== "playing" || state.paused) return;
   updatePaddle(dt);
+  updateRollingBlocks(dt);
   updateBalls(dt);
   updateParticles(dt);
   if (state.messageTimer > 0) state.messageTimer -= dt;
