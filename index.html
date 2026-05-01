@@ -29,7 +29,7 @@
             <strong id="score-value">0</strong>
           </div>
           <div class="lives-panel">
-            <span>Hearts</span>
+            <span>Lives</span>
             <strong id="lives-value">3</strong>
           </div>
         </div>
@@ -68,6 +68,20 @@
       </div>
 
       <p class="hint">Break the main face. Hidden power blocks can turn one clean bounce into a strike.</p>
+
+      <div id="screen-overlay" class="screen-overlay intro-screen">
+        <img class="overlay-logo" src="assets/images/IntroLogo2.png" alt="Rolling Block Strike" />
+        <div id="overlay-title" class="overlay-title"></div>
+        <img id="overlay-gameover" class="overlay-gameover" src="assets/images/GameOver.png" alt="Game Over" />
+        <div id="overlay-score" class="overlay-score"></div>
+        <label id="name-entry" class="name-entry">
+          <span>Name</span>
+          <input id="player-name" type="text" maxlength="10" autocomplete="off" spellcheck="false" />
+        </label>
+        <img id="overlay-topranks" class="overlay-topranks" src="assets/images/TopRanks.png" alt="Top Ranks" />
+        <div id="rank-list" class="rank-list"></div>
+        <div id="overlay-prompt" class="overlay-prompt">Press Enter to Start</div>
+      </div>
     </section>
   </main>
 

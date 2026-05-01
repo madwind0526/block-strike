@@ -17,6 +17,22 @@ const MAX_LIVES = 5;
 const EXPLOSION_RADIUS = BLOCK_W * 2;
 const BASE_PADDLE_W = 115;
 const WIDE_DURATION = 20000;
+const INITIAL_STAGE = 28;
+const INITIAL_SCORE = 16450;
+const LEADERBOARD_KEY = "rollingBlockStrikeLeaderboard";
+const LEADERBOARD_LIMIT = 10;
+const SAMPLE_LEADERBOARD = [
+  { name: "HJ, SHIN", score: "1265987452325654788", stage: 26987425 },
+  { name: "JAY", score: 18450000, stage: 430 },
+  { name: "MINA", score: 17200000, stage: 405 },
+  { name: "KIM", score: 15980000, stage: 390 },
+  { name: "SORA", score: 14325000, stage: 360 },
+  { name: "ALEX", score: 12888000, stage: 332 },
+  { name: "NOAH", score: 11456000, stage: 310 },
+  { name: "LUNA", score: 9800000, stage: 286 },
+  { name: "RYU", score: 7650000, stage: 244 },
+  { name: "JIN", score: 5120000, stage: 198 },
+];
 const SPECIAL_COUNTS = {
   rocket: 3,
   slow: 4,
@@ -39,14 +55,28 @@ const hud = {
   shield: document.getElementById("shield-value"),
 };
 
+const overlay = {
+  root: document.getElementById("screen-overlay"),
+  logo: document.querySelector(".overlay-logo"),
+  title: document.getElementById("overlay-title"),
+  gameover: document.getElementById("overlay-gameover"),
+  topRanks: document.getElementById("overlay-topranks"),
+  score: document.getElementById("overlay-score"),
+  prompt: document.getElementById("overlay-prompt"),
+  nameEntry: document.getElementById("name-entry"),
+  nameInput: document.getElementById("player-name"),
+  rankList: document.getElementById("rank-list"),
+};
+
 const keys = new Set();
 let pointerX = null;
 let lastTime = performance.now();
 const imageTrims = new WeakMap();
 
 const state = {
-  stageNumber: 28,
-  score: 16450,
+  mode: "intro",
+  stageNumber: INITIAL_STAGE,
+  score: INITIAL_SCORE,
   lives: 3,
   paused: false,
   waitingLaunch: true,
@@ -67,6 +97,8 @@ const state = {
   particles: [],
   explosions: [],
   stage: null,
+  pendingRankScore: 0,
+  pendingRankStage: INITIAL_STAGE,
 };
 
 const iconSources = {
@@ -265,6 +297,17 @@ function startStage(number) {
   state.rockets = [];
   resetBallAndPaddle();
   setMessage(`Stage ${number}`, 1.2);
+}
+
+function startGame() {
+  state.mode = "playing";
+  state.score = INITIAL_SCORE;
+  state.lives = 3;
+  state.paused = false;
+  state.pendingRankScore = 0;
+  startStage(INITIAL_STAGE);
+  state.messageTimer = 0;
+  hideOverlay();
 }
 
 function setMessage(text, seconds = 1.5) {
@@ -466,14 +509,20 @@ function updateBalls(dt) {
 function loseLife() {
   state.lives--;
   if (state.lives <= 0) {
-    state.score = 0;
-    state.lives = 3;
-    startStage(1);
-    setMessage("Game Over", 1.8);
+    finishGame();
   } else {
     resetBallAndPaddle();
     setMessage("Ball Lost", 1.2);
   }
+}
+
+function finishGame() {
+  state.mode = "gameover";
+  state.paused = true;
+  state.waitingLaunch = false;
+  state.pendingRankScore = state.score;
+  state.pendingRankStage = state.stageNumber;
+  showGameOver();
 }
 
 function isStageClear() {
@@ -837,19 +886,179 @@ function drawMessage() {
   ctx.restore();
 }
 
+function loadLeaderboard() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || "[]");
+    const source = Array.isArray(saved) && saved.length
+      ? [...saved, ...SAMPLE_LEADERBOARD]
+      : SAMPLE_LEADERBOARD;
+    return source
+      .filter(entry => typeof entry?.name === "string" && toScoreBigInt(entry?.score) !== null)
+      .map(entry => ({ name: entry.name, score: entry.score, stage: Number.isFinite(entry.stage) ? entry.stage : null }))
+      .sort((a, b) => compareScores(b.score, a.score))
+      .slice(0, LEADERBOARD_LIMIT);
+  } catch {
+    return SAMPLE_LEADERBOARD.slice();
+  }
+}
+
+function saveLeaderboard(entries) {
+  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries.slice(0, LEADERBOARD_LIMIT)));
+}
+
+function rankForScore(score) {
+  const board = loadLeaderboard();
+  const betterScores = board.filter(entry => compareScores(entry.score, score) > 0).length;
+  return Math.min(999, betterScores + 1);
+}
+
+function qualifiesForLeaderboard(score) {
+  const board = loadLeaderboard();
+  return board.length < LEADERBOARD_LIMIT || compareScores(score, board[board.length - 1].score) > 0;
+}
+
+function sanitizePlayerName(value) {
+  return value.replace(/[^a-z,\s]/gi, "").replace(/\s+/g, " ").slice(0, 10).toUpperCase();
+}
+
+function addLeaderboardEntry(name, score, stage) {
+  const board = loadLeaderboard();
+  board.push({ name: name || "PLAYER", score, stage });
+  board.sort((a, b) => compareScores(b.score, a.score));
+  const updated = board.slice(0, LEADERBOARD_LIMIT);
+  saveLeaderboard(updated);
+  return updated;
+}
+
+function renderLeaderboard(entries = loadLeaderboard()) {
+  const rows = entries.length
+    ? entries.map((entry, index) => (
+      `<div class="rank-row"><span>${index + 1}</span><span>${entry.name}</span><span class="rank-score">${formatRankScore(entry.score)}</span><span>${formatRankStage(entry.stage)}</span></div>`
+    )).join("")
+    : '<div class="rank-row"><span>-</span><span>NO RANK</span><span class="rank-score">0</span><span>-</span></div>';
+
+  overlay.rankList.innerHTML = `
+    <div class="rank-rule"></div>
+    <div class="rank-row rank-header"><span>RANK</span><span>NAME</span><span>SCORE</span><span>STAGE</span></div>
+    ${rows}
+  `;
+}
+
+function hideOverlay() {
+  overlay.root.className = "screen-overlay hidden";
+  overlay.nameEntry.classList.remove("visible");
+  overlay.rankList.classList.remove("visible");
+  overlay.topRanks.style.display = "";
+}
+
+function showIntro() {
+  state.mode = "intro";
+  overlay.root.className = "screen-overlay intro-screen";
+  overlay.logo.style.display = "block";
+  overlay.gameover.style.display = "";
+  overlay.topRanks.style.display = "";
+  overlay.title.textContent = "";
+  overlay.score.textContent = "";
+  overlay.prompt.textContent = "Press Enter to Start";
+  overlay.nameEntry.classList.remove("visible");
+  overlay.rankList.classList.remove("visible");
+}
+
+function showGameOver() {
+  overlay.root.className = "screen-overlay gameover-screen";
+  overlay.logo.style.display = "none";
+  overlay.gameover.style.display = "block";
+  overlay.title.textContent = "";
+  overlay.score.textContent = `Score ${formatScore(state.pendingRankScore)}`;
+  overlay.nameEntry.classList.remove("visible");
+  overlay.rankList.classList.remove("visible");
+
+  if (qualifiesForLeaderboard(state.pendingRankScore)) {
+    state.mode = "nameEntry";
+    overlay.prompt.textContent = "Enter Name";
+    overlay.nameEntry.classList.add("visible");
+    overlay.nameInput.value = "";
+    overlay.nameInput.focus();
+  } else {
+    showRankingScreen();
+  }
+}
+
+function submitPlayerName() {
+  if (state.mode !== "nameEntry") return;
+  const name = sanitizePlayerName(overlay.nameInput.value);
+  const updated = addLeaderboardEntry(name, state.pendingRankScore, state.pendingRankStage);
+  showRankingScreen(updated);
+}
+
+function showRankingScreen(entries = loadLeaderboard()) {
+  state.mode = "ranking";
+  state.paused = true;
+  overlay.root.className = "screen-overlay ranking-screen";
+  overlay.logo.style.display = "none";
+  overlay.gameover.style.display = "none";
+  overlay.topRanks.style.display = "block";
+  overlay.title.textContent = "";
+  overlay.score.textContent = "";
+  overlay.nameEntry.classList.remove("visible");
+  renderLeaderboard(entries);
+  overlay.rankList.classList.add("visible");
+  overlay.prompt.textContent = "Press Enter to Start Again";
+}
+
 function formatScore(value) {
-  const abs = Math.abs(value);
+  const score = toScoreBigInt(value);
+  if (score === null) return "0";
+
+  const sign = score < 0n ? "-" : "";
+  const abs = score < 0n ? -score : score;
   const units = [
-    { value: 1_000_000_000, suffix: "G" },
-    { value: 1_000_000, suffix: "M" },
-    { value: 100_000, suffix: "K" },
+    { value: 1_000_000_000_000n, suffix: "G" },
+    { value: 1_000_000_000n, suffix: "M" },
+    { value: 1_000_000n, suffix: "K" },
   ];
   const unit = units.find(item => abs >= item.value);
-  if (!unit) return value.toLocaleString();
+  if (!unit) return `${sign}${abs.toLocaleString()}`;
 
-  const scaled = value / unit.value;
-  const digits = Math.abs(scaled) >= 100 ? 0 : Math.abs(scaled) >= 10 ? 1 : 2;
-  return `${scaled.toFixed(digits).replace(/\.0+$|(\.\d)0$/, "$1")}${unit.suffix}`;
+  return `${sign}${(abs / (unit.value / 1_000n)).toLocaleString()}${unit.suffix}`;
+}
+
+function toScoreBigInt(value) {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return BigInt(Math.trunc(value));
+  if (typeof value === "string" && /^\d+$/.test(value)) return BigInt(value);
+  return null;
+}
+
+function compareScores(a, b) {
+  const scoreA = toScoreBigInt(a);
+  const scoreB = toScoreBigInt(b);
+  if (scoreA === scoreB) return 0;
+  if (scoreA === null) return -1;
+  if (scoreB === null) return 1;
+  return scoreA > scoreB ? 1 : scoreA < scoreB ? -1 : 0;
+}
+
+function formatRankScore(value) {
+  const score = toScoreBigInt(value);
+  if (score === null) return "0";
+
+  const sign = score < 0n ? "-" : "";
+  let display = score < 0n ? -score : score;
+  const units = ["", "K", "M", "G", "T"];
+  let unitIndex = 0;
+
+  while (display > 999_999_999n && unitIndex < units.length - 1) {
+    display /= 1_000n;
+    unitIndex++;
+  }
+
+  return `${sign}${display.toLocaleString()}${units[unitIndex]}`;
+}
+
+function formatRankStage(stage) {
+  if (!Number.isFinite(stage)) return "-";
+  return stage > 99999 ? "∞" : String(stage);
 }
 
 function render() {
@@ -865,7 +1074,7 @@ function render() {
 
 function updateHud() {
   hud.stage.textContent = state.stageNumber;
-  hud.rank.textContent = Math.max(1, 300 - state.stageNumber * 3 - Math.floor(state.score / 200));
+  hud.rank.textContent = rankForScore(state.score);
   hud.score.textContent = formatScore(state.score);
   hud.lives.innerHTML = Array.from({ length: MAX_LIVES }, (_, i) =>
     i < state.lives
@@ -893,12 +1102,13 @@ function countRemainingSpecials() {
 }
 
 function togglePause() {
+  if (state.mode !== "playing") return;
   state.paused = !state.paused;
   setMessage(state.paused ? "Paused" : "Resume", 0.8);
 }
 
 function update(dt) {
-  if (state.paused) return;
+  if (state.mode !== "playing" || state.paused) return;
   updatePaddle(dt);
   updateBalls(dt);
   updateParticles(dt);
@@ -917,11 +1127,19 @@ function loop(now) {
 
 window.addEventListener("keydown", (event) => {
   keys.add(event.code);
-  if (event.code === "Space") {
+  if (event.code === "Enter") {
+    event.preventDefault();
+    if (state.mode === "intro" || state.mode === "ranking" || state.mode === "gameover") {
+      startGame();
+    } else if (state.mode === "nameEntry") {
+      submitPlayerName();
+    }
+  }
+  if (event.code === "Space" && state.mode === "playing") {
     event.preventDefault();
     launchBalls();
   }
-  if (event.code === "KeyP") {
+  if (event.code === "KeyP" && state.mode === "playing") {
     togglePause();
   }
 });
@@ -930,15 +1148,41 @@ window.addEventListener("keyup", (event) => keys.delete(event.code));
 
 document.getElementById("btn-pause").addEventListener("click", togglePause);
 
+overlay.nameInput.addEventListener("input", () => {
+  overlay.nameInput.value = sanitizePlayerName(overlay.nameInput.value);
+});
+
 canvas.addEventListener("pointermove", (event) => {
   const rect = canvas.getBoundingClientRect();
   pointerX = (event.clientX - rect.left) * (W / rect.width);
 });
 
-canvas.addEventListener("pointerdown", () => launchBalls());
+canvas.addEventListener("pointerdown", () => {
+  if (state.mode === "playing") launchBalls();
+});
 canvas.addEventListener("pointerleave", () => { pointerX = null; });
 
-startStage(28);
-state.score = 16450;
+startStage(INITIAL_STAGE);
+state.score = INITIAL_SCORE;
 state.messageTimer = 0;
+const initialScreen = new URLSearchParams(window.location.search).get("screen");
+if (initialScreen === "ranking") {
+  showRankingScreen();
+} else if (initialScreen === "gameover") {
+  state.pendingRankScore = INITIAL_SCORE;
+  state.pendingRankStage = INITIAL_STAGE;
+  overlay.root.className = "screen-overlay gameover-screen";
+  overlay.logo.style.display = "none";
+  overlay.gameover.style.display = "block";
+  overlay.topRanks.style.display = "";
+  overlay.title.textContent = "";
+  overlay.score.textContent = `Score ${formatScore(state.pendingRankScore)}`;
+  overlay.nameEntry.classList.remove("visible");
+  overlay.rankList.classList.remove("visible");
+  overlay.prompt.textContent = "Press Enter to Start Again";
+  state.mode = "gameover";
+  state.paused = true;
+} else {
+  showIntro();
+}
 requestAnimationFrame(loop);

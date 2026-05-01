@@ -5,13 +5,6 @@
   font-style: normal;
 }
 
-@font-face {
-  font-family: "DSDigitalThin";
-  src: url("../assets/fonts/DS-DIGIT.TTF") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
-
 :root {
   --ink: #f7fbff;
   --hud-value: #80efff;
@@ -46,6 +39,7 @@ body {
 }
 
 .phone {
+  position: relative;
   width: min(530px, calc(100vw - 8px), calc((100vh - 8px) * 0.504));
   aspect-ratio: 530 / 1051;
   display: grid;
@@ -96,7 +90,7 @@ body {
 }
 
 .stage-stack .mini-panel {
-  padding-left: 34px;
+  padding-left: 17px;
   text-align: left;
 }
 
@@ -210,6 +204,7 @@ body {
   min-height: 54px;
   padding: 0;
   text-align: right;
+  justify-self: end;
 }
 
 .lives-panel span {
@@ -224,6 +219,8 @@ body {
   gap: 4px 5px;
   margin-top: 7px;
   direction: rtl;
+  width: max-content;
+  margin-left: auto;
 }
 
 .lives-panel strong img {
@@ -353,4 +350,190 @@ body {
 
 .hint {
   display: none;
+}
+
+.screen-overlay {
+  position: absolute;
+  inset: 12px;
+  z-index: 10;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 18px;
+  padding: 34px 28px;
+  border-radius: 27px;
+  background:
+    radial-gradient(circle at 50% 43%, rgba(42, 147, 255, 0.2), transparent 42%),
+    #000000;
+  color: #ffffff;
+  text-align: center;
+}
+
+.gameover-screen {
+  align-content: center;
+  gap: 18px;
+}
+
+.ranking-screen {
+  gap: 16px;
+  padding: 20px 18px;
+}
+
+.screen-overlay.hidden {
+  display: none;
+}
+
+.overlay-logo {
+  width: min(78%, 340px);
+  max-height: 50vh;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 13px rgba(0, 0, 0, 0.72))
+    drop-shadow(0 0 18px rgba(71, 206, 255, 0.28));
+}
+
+.overlay-title {
+  color: #ff4f68;
+  font-family: "DSDigital", Bahnschrift, monospace;
+  font-size: 64px;
+  line-height: 0.9;
+  text-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.78),
+    0 0 18px rgba(255, 70, 93, 0.56);
+}
+
+.overlay-gameover {
+  display: none;
+  width: min(92%, 390px);
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 16px rgba(0, 0, 0, 0.78))
+    drop-shadow(0 0 18px rgba(255, 67, 114, 0.3));
+}
+
+.gameover-screen .overlay-gameover {
+  display: block;
+}
+
+.overlay-topranks {
+  display: none;
+  width: min(62%, 246px);
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 16px rgba(0, 0, 0, 0.78))
+    drop-shadow(0 0 18px rgba(255, 67, 194, 0.24));
+}
+
+.ranking-screen .overlay-topranks {
+  display: block;
+}
+
+.overlay-score,
+.overlay-prompt,
+.name-entry {
+  font-family: "DSDigital", Bahnschrift, monospace;
+  text-transform: uppercase;
+  text-shadow: 0 0 13px rgba(88, 236, 255, 0.35);
+}
+
+.overlay-score {
+  color: var(--hud-value);
+  font-size: 34px;
+}
+
+.gameover-screen .overlay-score {
+  margin-bottom: 54px;
+}
+
+.overlay-prompt {
+  color: #ffffff;
+  font-size: 32px;
+  letter-spacing: 0.08em;
+  animation: prompt-blink 1.1s steps(2, start) infinite;
+}
+
+.name-entry {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  font-size: 25px;
+}
+
+.name-entry.visible {
+  display: flex;
+}
+
+.name-entry input {
+  width: 180px;
+  border: 2px solid rgba(128, 239, 255, 0.7);
+  border-radius: 8px;
+  padding: 7px 10px 5px;
+  background: rgba(4, 16, 31, 0.92);
+  color: var(--hud-value);
+  font: inherit;
+  text-transform: uppercase;
+  text-align: center;
+  outline: none;
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.58),
+    0 0 15px rgba(88, 236, 255, 0.22);
+}
+
+.rank-list {
+  display: none;
+  width: min(440px, 98%);
+  margin: 0;
+  padding: 0;
+  font-family: "DSDigital", Bahnschrift, monospace;
+  font-size: 27px;
+  color: #ffffff;
+  text-align: left;
+}
+
+.rank-list.visible {
+  display: grid;
+  gap: 12px;
+}
+
+.rank-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(128, 239, 255, 0.7), transparent);
+}
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 58px 112px 1fr 86px;
+  gap: 5px;
+  align-items: baseline;
+}
+
+.rank-header {
+  color: #ffffff;
+  font-size: 22px;
+}
+
+.rank-row span:nth-child(1),
+.rank-row span:nth-child(4) {
+  text-align: center;
+}
+
+.rank-row span:nth-child(3) {
+  text-align: right;
+}
+
+.rank-list .rank-score {
+  color: var(--hud-value);
+}
+
+@keyframes prompt-blink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  49%,
+  100% {
+    opacity: 0.28;
+  }
 }
