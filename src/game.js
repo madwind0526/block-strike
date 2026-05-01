@@ -6,14 +6,14 @@ const H = canvas.height;
 const TOP_GAP = 70;
 const BLOCK_COLS = 7;
 const BLOCK_ROWS = 5;
-const BLOCK_W = 56;
-const BLOCK_H = 56;
-const BLOCK_GAP = 8;
+const BLOCK_W = 70;
+const BLOCK_H = 70;
+const BLOCK_GAP = 1;
 const GRID_W = BLOCK_COLS * BLOCK_W + (BLOCK_COLS - 1) * BLOCK_GAP;
 const GRID_X = (W - GRID_W) / 2;
 const GRID_Y = TOP_GAP;
 const MAX_LIVES = 5;
-const EXPLOSION_RADIUS = (BLOCK_W + BLOCK_GAP) * 2;
+const EXPLOSION_RADIUS = BLOCK_W * 2;
 const BASE_PADDLE_W = 115;
 const WIDE_DURATION = 20000;
 const SPECIAL_COUNTS = {
@@ -67,18 +67,18 @@ const state = {
 };
 
 const iconSources = {
-  x3: "assets/images/power-x3.svg",
-  slow: "assets/images/power-slow.svg",
-  bomb: "assets/images/power-bomb.svg",
-  wide: "assets/images/power-wide.svg",
-  rocket: "assets/images/power-rocket.svg",
-  shield: "assets/images/block-shield.svg",
-  red: "assets/images/block-red.svg",
-  orange: "assets/images/block-orange.svg",
-  green: "assets/images/block-green.svg",
-  yellow: "assets/images/block-yellow.svg",
-  blue: "assets/images/block-blue.svg",
-  purple: "assets/images/block-purple.svg",
+  x3: "assets/images/power-x3.png",
+  slow: "assets/images/power-slow.png",
+  bomb: "assets/images/power-bomb.png",
+  wide: "assets/images/power-wide.png",
+  rocket: "assets/images/power-rocket.png",
+  shield: "assets/images/block-shield.png",
+  red: "assets/images/block-red.png",
+  orange: "assets/images/block-orange.png",
+  green: "assets/images/block-green.png",
+  yellow: "assets/images/block-yellow.png",
+  blue: "assets/images/block-blue.png",
+  purple: "assets/images/block-purple.png",
 };
 
 const icons = Object.fromEntries(
@@ -88,6 +88,9 @@ const icons = Object.fromEntries(
     return [key, image];
   })
 );
+
+const paddleImg = new Image();
+paddleImg.src = "assets/images/paddle.png";
 
 const palettes = {
   red: ["#ff8d82", "#ef342e"],
@@ -641,33 +644,32 @@ function drawSolidX(block) {
 function drawPaddle() {
   const p = state.paddle;
   ctx.save();
-  ctx.shadowColor = "rgba(31,166,255,0.8)";
-  ctx.shadowBlur = 24;
-  ctx.shadowOffsetY = 12;
-  roundRect(p.x, p.y, p.w, p.h, p.h / 2);
-  const g = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
-  g.addColorStop(0, "#2d9dff");
-  g.addColorStop(0.22, "#075dc6");
-  g.addColorStop(0.5, "#efe1ce");
-  g.addColorStop(0.76, "#efe1ce");
-  g.addColorStop(1, "#004caf");
-  ctx.fillStyle = g;
-  ctx.fill();
+  ctx.shadowColor = "rgba(31,166,255,0.75)";
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetY = 10;
 
-  ctx.shadowColor = "transparent";
-  const centerX = p.x + p.w / 2 - 26;
-  roundRect(centerX, p.y + 19, 52, 10, 5);
-  const light = ctx.createLinearGradient(centerX, p.y + 19, centerX, p.y + 29);
-  light.addColorStop(0, "#ffffff");
-  light.addColorStop(0.35, "#68eeff");
-  light.addColorStop(1, "#00afff");
-  ctx.fillStyle = light;
-  ctx.fill();
-
-  ctx.strokeStyle = "rgba(255,255,255,0.32)";
-  ctx.lineWidth = 2;
-  roundRect(p.x + 2, p.y + 2, p.w - 4, p.h - 4, p.h / 2);
-  ctx.stroke();
+  if (paddleImg.complete && paddleImg.naturalWidth > 0) {
+    const iw = paddleImg.naturalWidth;
+    const ih = paddleImg.naturalHeight;
+    const capFrac = 0.16;
+    const capSrcW = Math.round(iw * capFrac);
+    const capDstW = Math.round(capSrcW * (p.h / ih));
+    const midSrcW = iw - 2 * capSrcW;
+    const midDstW = p.w - 2 * capDstW;
+    ctx.drawImage(paddleImg, 0, 0, capSrcW, ih, p.x, p.y, capDstW, p.h);
+    ctx.drawImage(paddleImg, capSrcW, 0, midSrcW, ih, p.x + capDstW, p.y, midDstW, p.h);
+    ctx.drawImage(paddleImg, iw - capSrcW, 0, capSrcW, ih, p.x + p.w - capDstW, p.y, capDstW, p.h);
+  } else {
+    roundRect(p.x, p.y, p.w, p.h, p.h / 2);
+    const g = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
+    g.addColorStop(0, "#2d9dff");
+    g.addColorStop(0.22, "#075dc6");
+    g.addColorStop(0.5, "#efe1ce");
+    g.addColorStop(0.76, "#efe1ce");
+    g.addColorStop(1, "#004caf");
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -785,7 +787,11 @@ function render() {
 function updateHud() {
   hud.stage.textContent = state.stageNumber;
   hud.score.textContent = state.score.toLocaleString();
-  hud.lives.innerHTML = Array.from({ length: state.lives }, () => '<img src="assets/images/heart.svg" alt="life" />').join("");
+  hud.lives.innerHTML = Array.from({ length: MAX_LIVES }, (_, i) =>
+    i < state.lives
+      ? '<img src="assets/images/heart-filled.png" alt="life" />'
+      : '<img src="assets/images/heart-empty.png" alt="" />'
+  ).join("");
   const counts = countRemainingSpecials();
   hud.rocket.textContent = counts.rocket;
   hud.slow.textContent = counts.slow;

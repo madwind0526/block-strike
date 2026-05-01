@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".38" r=".65">
+      <stop offset="0" stop-color="#2e5090"/>
+      <stop offset="1" stop-color="#0d1f38"/>
+    </radialGradient>
+    <linearGradient id="bar" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#a8c4e8"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".55"/>
+    </filter>
+  </defs>
+
+  <!-- Circle background -->
+  <circle cx="48" cy="48" r="44" fill="url(#bg)" filter="url(#s)"/>
+
+  <!-- Border ring -->
+  <circle cx="48" cy="48" r="43" fill="none" stroke="#5080c0" stroke-width="2" opacity=".65"/>
+
+  <!-- Top shine -->
+  <ellipse cx="48" cy="31" rx="22" ry="13" fill="#ffffff" opacity=".12"/>
+
+  <!-- Pause bars -->
+  <rect x="26" y="25" width="16" height="46" rx="6" fill="url(#bar)"/>
+  <rect x="54" y="25" width="16" height="46" rx="6" fill="url(#bar)"/>
+
+  <!-- Bar top highlights -->
+  <rect x="26" y="25" width="16" height="10" rx="6" fill="#ffffff" opacity=".4"/>
+  <rect x="54" y="25" width="16" height="10" rx="6" fill="#ffffff" opacity=".4"/>
+</svg>

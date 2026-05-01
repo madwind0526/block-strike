@@ -1,23 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
   <defs>
-    <radialGradient id="bg" cx=".35" cy=".25" r=".8">
-      <stop offset="0" stop-color="#7df0ff"/>
-      <stop offset=".5" stop-color="#178fdc"/>
-      <stop offset="1" stop-color="#06366c"/>
-    </radialGradient>
     <linearGradient id="body" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset=".55" stop-color="#e8eef5"/>
-      <stop offset="1" stop-color="#a8b7c8"/>
+      <stop offset="0" stop-color="#deeeff"/>
+      <stop offset="1" stop-color="#7898b8"/>
     </linearGradient>
-    <filter id="s" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000" flood-opacity=".55"/>
+    <radialGradient id="win" cx=".38" cy=".34" r=".62">
+      <stop offset="0" stop-color="#80eaff"/>
+      <stop offset="1" stop-color="#0d68b8"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
-  <circle cx="48" cy="48" r="43" fill="url(#bg)" filter="url(#s)"/>
-  <path d="M58 13c13 4 22 13 25 26-14 2-26 11-35 27L29 47c11-16 20-28 29-34Z" fill="url(#body)" stroke="#103461" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M31 48 14 54l12 11M48 66l-6 17-11-12" fill="#f4474f" stroke="#103461" stroke-width="4" stroke-linejoin="round"/>
-  <circle cx="61" cy="34" r="8" fill="#28d8ff" stroke="#103461" stroke-width="3"/>
-  <path d="M25 67c-9 4-15 11-18 21 10-3 17-8 22-18" fill="#ffd236" stroke="#e76d13" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M54 18c7 2 14 9 18 17" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".65"/>
+
+  <!-- Dark circle background -->
+  <circle cx="48" cy="48" r="46" fill="#0d1f38"/>
+
+  <!-- Flame glow -->
+  <ellipse cx="48" cy="76" rx="14" ry="9" fill="#ff6600" opacity=".55" filter="url(#glow)"/>
+
+  <g transform="rotate(-12 48 48)">
+    <!-- Outer flame -->
+    <path d="M41 66 C38 76 40 88 48 90 C56 88 58 76 55 66" fill="#ff8800"/>
+    <!-- Inner flame -->
+    <path d="M44 68 C42 77 44 86 48 87 C52 86 54 77 52 68" fill="#ffdd00"/>
+
+    <!-- Left fin -->
+    <path d="M39 56 L26 70 L39 64" fill="#cc2020"/>
+    <!-- Right fin -->
+    <path d="M57 56 L70 70 L57 64" fill="#cc2020"/>
+
+    <!-- Body -->
+    <rect x="39" y="27" width="18" height="34" rx="5" fill="url(#body)"/>
+
+    <!-- Nose cone -->
+    <path d="M48 10 L39 27 L57 27 Z" fill="#c4d8ee"/>
+    <path d="M48 10 L42 23 L48 27 Z" fill="#9ab4d0"/>
+
+    <!-- Window -->
+    <circle cx="48" cy="41" r="8" fill="url(#win)" stroke="#0a4a88" stroke-width="2"/>
+    <ellipse cx="45" cy="38.5" rx="2.5" ry="1.8" fill="#fff" opacity=".55"/>
+  </g>
 </svg>
