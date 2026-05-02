@@ -5,7 +5,8 @@ const W = canvas.width;
 const H = canvas.height;
 const TOP_GAP = 70;
 const BLOCK_COLS = 7;
-const BLOCK_ROWS = 5;
+const DEFAULT_BLOCK_ROWS = 5;
+const MOBILE_BLOCK_ROWS = 4;
 const GRID_MARGIN_X = 26;
 const BLOCK_GAP = 4;
 const GRID_W = W - GRID_MARGIN_X * 2;
@@ -32,6 +33,18 @@ const BREAKABLE_SPECIAL_TYPES = ["rocket", "slow", "x3", "wide", "bomb"];
 const SPECIAL_TYPE_SET = new Set([...BREAKABLE_SPECIAL_TYPES, "shield"]);
 const INFI_BLOCK_START_STAGE = 10;
 const MAX_INFI_BLOCKS = 7;
+
+function isMobileLayout() {
+  return window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 640;
+}
+
+function blockRowCount() {
+  return isMobileLayout() ? MOBILE_BLOCK_ROWS : DEFAULT_BLOCK_ROWS;
+}
+
+function enterPrompt(action) {
+  return isMobileLayout() ? `Double Tap to ${action}` : `Press Enter to ${action}`;
+}
 
 const hud = {
   logo: document.querySelector(".logo-title"),
@@ -392,8 +405,9 @@ function specialLabel(special) {
 
 function buildFace(stageNumber, faceIndex) {
   const blocks = [];
-  const specialMap = buildSpecialMap(stageNumber, faceIndex);
-  for (let row = 0; row < BLOCK_ROWS; row++) {
+  const rows = blockRowCount();
+  const specialMap = buildSpecialMap(stageNumber, faceIndex, rows);
+  for (let row = 0; row < rows; row++) {
     for (let col = 0; col < BLOCK_COLS; col++) {
       const key = `${row}:${col}`;
       const special = specialMap.get(key);
@@ -402,12 +416,12 @@ function buildFace(stageNumber, faceIndex) {
       blocks.push(createBlock(row, col, stageNumber, faceIndex, pattern, label));
     }
   }
-  return { blocks, rollElapsed: 0, rollTicks: 0 };
+  return { blocks, rows, rollElapsed: 0, rollTicks: 0 };
 }
 
-function buildSpecialMap(stageNumber, faceIndex) {
+function buildSpecialMap(stageNumber, faceIndex, rows) {
   const cells = [];
-  for (let row = 0; row < BLOCK_ROWS; row++) {
+  for (let row = 0; row < rows; row++) {
     for (let col = 0; col < BLOCK_COLS; col++) {
       cells.push({ row, col, score: rand(stageNumber * 911 + faceIndex * 101 + row * 37 + col * 17) });
     }
@@ -494,9 +508,9 @@ function updateRollingBlocks(dt) {
 
 function rollActiveRows(face, tick) {
   playSound("rollingBlocks");
-  const activeRows = Math.min(BLOCK_ROWS, tick);
+  const activeRows = Math.min(face.rows, tick);
   for (let offset = 0; offset < activeRows; offset++) {
-    const row = BLOCK_ROWS - 1 - offset;
+    const row = face.rows - 1 - offset;
     const direction = offset % 2 === 0 ? 1 : -1;
     rollRow(face, row, direction);
   }
@@ -519,8 +533,9 @@ function resolveBallsAfterRolling() {
   state.balls.forEach(ball => {
     if (ball.stuck) return;
     let guard = 0;
-    while (guard < BLOCK_ROWS) {
-      const hit = activeFace().blocks.find(block => block.alive && circleRectHit(ball, block));
+    const face = activeFace();
+    while (guard < face.rows) {
+      const hit = face.blocks.find(block => block.alive && circleRectHit(ball, block));
       if (!hit) break;
       ball.y = hit.y + hit.h + ball.r + 1;
       guard++;
@@ -1391,7 +1406,7 @@ function showIntro() {
   overlay.topRanks.style.display = "";
   overlay.title.textContent = "";
   overlay.score.textContent = "";
-  overlay.prompt.textContent = "Press Enter to Start";
+  overlay.prompt.textContent = enterPrompt("Start");
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
 }
@@ -1418,7 +1433,7 @@ function showGameOver() {
     showRankingScreen();
   } else {
     state.mode = "gameover";
-    overlay.prompt.textContent = "Press Enter to Start Again";
+    overlay.prompt.textContent = enterPrompt("Start Again");
   }
 }
 
@@ -1443,7 +1458,7 @@ function showRankingScreen(entries = loadLeaderboard()) {
   overlay.nameEntry.classList.remove("visible");
   renderLeaderboard(entries);
   overlay.rankList.classList.add("visible");
-  overlay.prompt.textContent = "Press Enter to Start Again";
+  overlay.prompt.textContent = enterPrompt("Start Again");
 }
 
 function showNextStageScreen(stageNumber) {
@@ -1457,7 +1472,7 @@ function showNextStageScreen(stageNumber) {
   overlay.score.textContent = `Stage ${stageNumber}`;
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
-  overlay.prompt.textContent = "Press Enter to Continue";
+  overlay.prompt.textContent = enterPrompt("Continue");
 }
 
 function formatScore(value) {
@@ -1832,7 +1847,7 @@ if (initialScreen === "ranking") {
   overlay.score.textContent = `Score ${formatScore(state.pendingRankScore)}`;
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
-  overlay.prompt.textContent = "Press Enter to Start Again";
+  overlay.prompt.textContent = enterPrompt("Start Again");
   state.mode = "gameover";
   state.paused = true;
 } else if (initialScreen === "nextstage") {

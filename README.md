@@ -47,6 +47,7 @@ The layout updates its app height from the browser viewport so mobile address ba
 - Mobile double tap on the game screen: same action as `Space`.
 - Mobile double tap on Intro, Next Stage, Game Over, Top Ranks, or name-entry screens: same action as `Enter`.
 - Logo click/tap during gameplay: open debug command mode.
+- Mobile prompts use `Double Tap` instead of `Press Enter`.
 
 ## Debug Commands
 
@@ -186,6 +187,7 @@ Normal block level ranges:
 ### Block Placement
 
 - Blocks should be placed randomly.
+- Implemented: desktop uses 5 block rows; mobile uses 4 block rows.
 - The first implementation should focus on one active face.
 - Four-face stage generation should remain planned, but not implemented first.
 
