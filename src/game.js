@@ -29,6 +29,7 @@ const DOUBLE_TAP_MS = 340;
 const DOUBLE_TAP_DISTANCE = 32;
 const SWIPE_MIN_DISTANCE = 70;
 const SWIPE_MAX_VERTICAL_DRIFT = 45;
+const FACE_SWITCH_DURATION = 0.26;
 const SOUND_POOL_SIZE = 6;
 const LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const SPECIAL_BLOCK_TOTAL = 5;
@@ -132,6 +133,7 @@ const state = {
   scorePopups: [],
   explosions: [],
   stage: null,
+  faceTransition: null,
   pendingRankScore: 0,
   pendingRankStage: INITIAL_STAGE,
   pendingNextStage: INITIAL_STAGE,
@@ -500,12 +502,21 @@ function activeFace() {
 
 function switchFace(direction) {
   if (state.mode !== "playing" || !state.stage?.faces?.length) return;
+  if (state.paused) return;
   if (debugUi.root && !debugUi.root.classList.contains("hidden")) return;
   const faces = state.stage.faces;
+  const fromIndex = state.stage.activeFaceIndex;
   const nextIndex = (state.stage.activeFaceIndex + direction + faces.length) % faces.length;
   if (nextIndex === state.stage.activeFaceIndex) return;
 
   state.stage.activeFaceIndex = nextIndex;
+  state.faceTransition = {
+    fromFace: faces[fromIndex],
+    toFace: faces[nextIndex],
+    direction: direction >= 0 ? 1 : -1,
+    age: 0,
+    duration: FACE_SWITCH_DURATION,
+  };
   playSound("rollingFace");
   resolveBallsAfterRolling();
   setMessage(`Face ${nextIndex + 1}`, 0.8);
@@ -574,6 +585,7 @@ function resetBallAndPaddle() {
 function startStage(number) {
   state.stageNumber = number;
   state.stage = buildStage(number);
+  state.faceTransition = null;
   state.wideUntil = 0;
   state.rockets = [];
   resetBallAndPaddle();
@@ -1549,9 +1561,17 @@ function formatRankStage(stage) {
   return stage > 99999 ? "∞" : String(stage);
 }
 
+function updateFaceTransition(dt) {
+  if (!state.faceTransition) return;
+  state.faceTransition.age += dt;
+  if (state.faceTransition.age >= state.faceTransition.duration) {
+    state.faceTransition = null;
+  }
+}
+
 function render() {
   drawBackground();
-  activeFace().blocks.forEach(drawBlock);
+  drawActiveFaceBlocks();
   drawExplosions();
   drawRockets();
   drawPaddle();
@@ -1559,6 +1579,28 @@ function render() {
   drawParticles();
   drawScorePopups();
   drawMessage();
+}
+
+function drawActiveFaceBlocks() {
+  const transition = state.faceTransition;
+  if (!transition) {
+    activeFace().blocks.forEach(drawBlock);
+    return;
+  }
+
+  const progress = clamp(transition.age / transition.duration, 0, 1);
+  const eased = 1 - Math.pow(1 - progress, 3);
+  const fromOffset = -transition.direction * eased * W;
+  const toOffset = transition.direction * (1 - eased) * W;
+  drawFaceBlocks(transition.fromFace, fromOffset);
+  drawFaceBlocks(transition.toFace, toOffset);
+}
+
+function drawFaceBlocks(face, offsetX = 0) {
+  ctx.save();
+  ctx.translate(offsetX, 0);
+  face.blocks.forEach(drawBlock);
+  ctx.restore();
 }
 
 function updateHud() {
@@ -1744,6 +1786,7 @@ function update(dt) {
   updateRollingBlocks(dt);
   updateBalls(dt);
   updateParticles(dt);
+  updateFaceTransition(dt);
   if (state.messageTimer > 0) state.messageTimer -= dt;
   if (isStageClear()) nextStage();
 }
