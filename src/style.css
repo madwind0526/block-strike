@@ -970,6 +970,10 @@ body {
 }
 
 @media (pointer: coarse), (max-width: 640px) {
+  .logo-title {
+    transform: translateX(-16px);
+  }
+
   .item-bar {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
@@ -980,6 +984,18 @@ body {
 
   .face-status {
     bottom: 108px;
+  }
+
+  .cheat-status {
+    right: 42px;
+    bottom: 88px;
+    gap: 2px;
+    padding: 6px 8px 6px;
+    border-radius: 8px;
+  }
+
+  .cheat-status div {
+    font-size: 13px;
   }
 
   .screen-overlay {
