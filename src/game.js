@@ -115,6 +115,7 @@ const state = {
   paused: false,
   waitingLaunch: true,
   stageMessage: "Press Space",
+  messageType: "normal",
   messageTimer: 0,
   wideUntil: 0,
   paddleHits: 0,
@@ -519,7 +520,7 @@ function switchFace(direction) {
   };
   playSound("rollingFace");
   resolveBallsAfterRolling();
-  setMessage(`Face ${nextIndex + 1}`, 0.8);
+  setFaceMessage(nextIndex);
 }
 
 function updateRollingBlocks(dt) {
@@ -612,7 +613,15 @@ function startGame() {
 
 function setMessage(text, seconds = 1.5) {
   state.stageMessage = text;
+  state.messageType = "normal";
   state.messageTimer = seconds;
+}
+
+function setFaceMessage(faceIndex) {
+  const labels = ["MAIN", "LEFT", "RIGHT"];
+  state.stageMessage = labels[faceIndex] || `FACE ${faceIndex + 1}`;
+  state.messageType = "face";
+  state.messageTimer = 0.9;
 }
 
 function launchBalls() {
@@ -1337,6 +1346,24 @@ function drawMessage() {
   if (state.messageTimer <= 0) return;
   ctx.save();
   ctx.globalAlpha = clamp(state.messageTimer, 0, 1);
+  if (state.messageType === "face") {
+    ctx.fillStyle = "rgba(5, 12, 23, 0.66)";
+    roundRect(W / 2 - 128, H / 2 - 52, 256, 104, 16);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(128, 239, 255, 0.42)";
+    ctx.lineWidth = 2;
+    roundRect(W / 2 - 128, H / 2 - 52, 256, 104, 16);
+    ctx.stroke();
+    ctx.fillStyle = "#80efff";
+    ctx.font = "56px DSDigital, Bahnschrift, Cascadia Mono, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(88, 236, 255, 0.55)";
+    ctx.shadowBlur = 14;
+    ctx.fillText(state.stageMessage, W / 2, H / 2 + 2);
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = "rgba(15, 19, 30, 0.78)";
   roundRect(W / 2 - 125, H / 2 - 36, 250, 72, 18);
   ctx.fill();
