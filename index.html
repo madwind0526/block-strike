@@ -39,6 +39,7 @@
         <canvas id="game" width="506" height="760"></canvas>
         <button id="face-left" class="face-nav face-left" type="button" aria-label="Previous face">&lt;</button>
         <button id="face-right" class="face-nav face-right" type="button" aria-label="Next face">&gt;</button>
+        <div id="mode-status" class="mode-status hidden" aria-label="Current mode and speed"></div>
       </div>
 
       <div class="item-bar">
@@ -86,10 +87,10 @@
         <img class="overlay-logo" src="assets/images/IntroLogo2.png" alt="Rolling Block Strike" />
         <div id="overlay-title" class="overlay-title"></div>
         <div id="intro-options" class="intro-options hidden" aria-label="Game mode options">
-          <button type="button" data-option-group="gameVariant" data-option-value="classic">Classic Mode <span>(C)</span></button>
-          <button type="button" data-option-group="gameVariant" data-option-value="launch">Launch Mode <span>(L)</span></button>
-          <button type="button" data-option-group="speedMode" data-option-value="normal">Normal Speed <span>(N)</span></button>
-          <button type="button" data-option-group="speedMode" data-option-value="fast">Fast Speed x2 <span>(F)</span></button>
+          <button type="button" data-option-group="gameVariant" data-option-value="classic"><span class="hotkey">C</span>lassic Mode</button>
+          <button type="button" data-option-group="gameVariant" data-option-value="launch"><span class="hotkey">L</span>aunch Mode</button>
+          <button type="button" data-option-group="speedMode" data-option-value="normal"><span class="hotkey">N</span>ormal Speed</button>
+          <button type="button" data-option-group="speedMode" data-option-value="fast"><span class="hotkey">F</span>ast Speed (x2)</button>
         </div>
         <img id="overlay-gameover" class="overlay-gameover" src="assets/images/GameOver.png" alt="Game Over" />
         <img id="overlay-nextstage" class="overlay-nextstage" src="assets/images/NextStage.png" alt="Next Stage" />

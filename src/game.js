@@ -28,6 +28,7 @@ const LEADERBOARD_LIMIT = 10;
 const DOUBLE_TAP_MS = 340;
 const DOUBLE_TAP_DISTANCE = 32;
 const FACE_SWITCH_DURATION = 0.26;
+const ROW_ROLL_DURATION = 0.36;
 const SOUND_POOL_SIZE = 6;
 const LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const BREAKABLE_SPECIAL_TYPES = ["rocket", "slow", "x3", "wide", "bomb"];
@@ -82,6 +83,7 @@ const faceNav = {
   right: document.getElementById("face-right"),
 };
 const faceStatus = document.getElementById("face-status");
+const modeStatus = document.getElementById("mode-status");
 
 const overlay = {
   root: document.getElementById("screen-overlay"),
@@ -455,7 +457,7 @@ function buildFace(stageNumber, faceIndex) {
       blocks.push(createBlock(row, col, stageNumber, faceIndex, pattern, label));
     }
   }
-  return { blocks, rows, rollElapsed: 0, rollTicks: 0 };
+  return { blocks, rows, rollElapsed: 0, rollTicks: 0, rowRolls: [] };
 }
 
 function buildSpecialMap(stageNumber, faceIndex, rows) {
@@ -564,6 +566,7 @@ function switchFace(direction) {
 function updateRollingBlocks(dt) {
   if (state.waitingLaunch) return;
   const face = activeFace();
+  updateRowRollAnimations(face, dt);
   face.rollElapsed += dt;
 
   const targetTicks = Math.floor(face.rollElapsed / ROLL_INTERVAL);
@@ -571,6 +574,14 @@ function updateRollingBlocks(dt) {
     face.rollTicks++;
     rollActiveRows(face, face.rollTicks);
   }
+}
+
+function updateRowRollAnimations(face, dt) {
+  if (!face?.rowRolls?.length) return;
+  face.rowRolls.forEach(animation => {
+    animation.age += dt;
+  });
+  face.rowRolls = face.rowRolls.filter(animation => animation.age < animation.duration);
 }
 
 function rollActiveRows(face, tick) {
@@ -594,6 +605,8 @@ function rollRow(face, row, direction) {
     block.col = (block.col + direction + BLOCK_COLS) % BLOCK_COLS;
     block.x = GRID_X + block.col * (BLOCK_W + BLOCK_GAP);
   });
+  face.rowRolls = face.rowRolls.filter(animation => animation.row !== row);
+  face.rowRolls.push({ row, direction, age: 0, duration: ROW_ROLL_DURATION });
 }
 
 function resolveBallsAfterRolling() {
@@ -830,7 +843,7 @@ function playBlockBreakSound(block) {
     return;
   }
   if (block.special === "rocket") {
-    playSound("rocket");
+    return;
   } else if (block.special === "slow") {
     playSound("slow");
   } else if (block.special === "wide") {
@@ -938,7 +951,6 @@ function armBombBalls() {
     ball.bomb = true;
     ball.bombUntil = until;
   });
-  playSound("bomb");
 }
 
 function explodeAtBlock(originBlock) {
@@ -994,6 +1006,7 @@ function settleBombBall(ball, x, y) {
 
 function fireRocket() {
   const x = state.paddle.x + state.paddle.w / 2;
+  playSound("rocket");
   state.rockets.push({ x, y: state.paddle.y, life: 0.45, age: 0 });
 
   const targets = activeFace().blocks
@@ -1785,7 +1798,7 @@ function render() {
 function drawActiveFaceBlocks() {
   const transition = state.faceTransition;
   if (!transition) {
-    activeFace().blocks.forEach(drawBlock);
+    drawFaceBlocks(activeFace());
     return;
   }
 
@@ -1800,8 +1813,35 @@ function drawActiveFaceBlocks() {
 function drawFaceBlocks(face, offsetX = 0) {
   ctx.save();
   ctx.translate(offsetX, 0);
-  face.blocks.forEach(drawBlock);
+  face.blocks.forEach(block => drawBlockWithRowRoll(face, block));
   ctx.restore();
+}
+
+function drawBlockWithRowRoll(face, block) {
+  const animation = face.rowRolls?.find(item => item.row === block.row);
+  if (!animation) {
+    drawBlock(block);
+    return;
+  }
+
+  const progress = clamp(animation.age / animation.duration, 0, 1);
+  const eased = 1 - Math.pow(1 - progress, 3);
+  const step = BLOCK_W + BLOCK_GAP;
+  const offset = -animation.direction * (1 - eased) * step;
+  drawBlockAt(block, block.x + offset);
+
+  if (animation.direction > 0 && block.col === 0) {
+    drawBlockAt(block, block.x + offset + BLOCK_COLS * step);
+  } else if (animation.direction < 0 && block.col === BLOCK_COLS - 1) {
+    drawBlockAt(block, block.x + offset - BLOCK_COLS * step);
+  }
+}
+
+function drawBlockAt(block, x) {
+  const originalX = block.x;
+  block.x = x;
+  drawBlock(block);
+  block.x = originalX;
 }
 
 function updateHud() {
@@ -1828,6 +1868,7 @@ function updateHud() {
   updatePowerItemState(hud.shield, counts.shield);
   updateCheatStatus();
   updateFaceStatus();
+  updateModeStatus();
 }
 
 function powerItemCounts() {
@@ -1863,15 +1904,29 @@ function remainingBreakableBlocks(face) {
 
 function updateFaceStatus() {
   if (!state.stage || !faceStatus) return;
-  const labels = ["M", "L", "R"];
+  const faceOrder = [
+    { index: 1, label: "L" },
+    { index: 0, label: "M" },
+    { index: 2, label: "R" },
+  ];
   faceStatus.classList.toggle("hidden", state.mode !== "playing");
-  faceStatus.innerHTML = state.stage.faces.map((face, index) => {
+  faceStatus.innerHTML = faceOrder.map(({ index, label }) => {
+    const face = state.stage.faces[index];
+    if (!face) return "";
     const remaining = remainingBreakableBlocks(face);
     const classes = ["face-count"];
     if (index === state.stage.activeFaceIndex) classes.push("active");
     if (remaining === 0) classes.push("cleared");
-    return `<span class="${classes.join(" ")}">${labels[index] || index + 1}: ${remaining}</span>`;
+    return `<span class="${classes.join(" ")}">${label}: ${remaining}</span>`;
   }).join("");
+}
+
+function updateModeStatus() {
+  if (!modeStatus) return;
+  modeStatus.classList.toggle("hidden", state.mode !== "playing");
+  const mode = state.gameVariant === "launch" ? "Launch" : "Classic";
+  const speed = state.speedMode === "fast" ? "Fast" : "Normal";
+  modeStatus.textContent = `${mode} / ${speed}`;
 }
 
 function countRemainingSpecials() {

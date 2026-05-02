@@ -286,6 +286,28 @@ body {
   display: none;
 }
 
+.mode-status {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  z-index: 5;
+  padding: 3px 10px 3px 7px;
+  background: linear-gradient(90deg, rgba(2, 9, 18, 0.58), rgba(2, 9, 18, 0.16), transparent);
+  color: #ffffff;
+  font-family: "DSDigital", Bahnschrift, "Cascadia Mono", monospace;
+  font-size: clamp(16px, 3.6vw, 21px);
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.86),
+    0 0 9px rgba(88, 236, 255, 0.22);
+  pointer-events: none;
+}
+
+.mode-status.hidden {
+  display: none;
+}
+
 @media (pointer: coarse), (max-width: 640px) {
   .phone {
     grid-template-rows: 145fr 758fr 122fr;
@@ -582,7 +604,7 @@ body {
 .face-count {
   color: rgba(255, 255, 255, 0.88);
   font-family: "DSDigital", Bahnschrift, "Cascadia Mono", monospace;
-  font-size: 16px;
+  font-size: clamp(16px, 3.6vw, 21px);
   line-height: 1;
   text-align: left;
   text-transform: uppercase;
@@ -752,7 +774,7 @@ body {
   border: 0;
   padding: 1px 14px;
   background: linear-gradient(90deg, transparent, rgba(35, 184, 255, 0.16), transparent);
-  color: rgba(235, 242, 248, 0.62);
+  color: rgba(145, 156, 169, 0.64);
   font: inherit;
   font-size: clamp(21px, 5.4vw, 30px);
   letter-spacing: 0;
@@ -761,15 +783,22 @@ body {
   cursor: pointer;
 }
 
+.intro-options .hotkey {
+  color: var(--hud-value);
+  text-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.9),
+    0 0 13px rgba(88, 236, 255, 0.64);
+}
+
 .intro-options button:nth-child(3) {
   margin-top: 10px;
 }
 
 .intro-options button.active {
-  color: var(--hud-value);
+  color: #ffffff;
   text-shadow:
     0 3px 8px rgba(0, 0, 0, 0.9),
-    0 0 13px rgba(88, 236, 255, 0.64);
+    0 0 10px rgba(255, 255, 255, 0.24);
 }
 
 .overlay-title {
