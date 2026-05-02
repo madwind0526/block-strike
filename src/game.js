@@ -1347,19 +1347,15 @@ function drawMessage() {
   ctx.save();
   ctx.globalAlpha = clamp(state.messageTimer, 0, 1);
   if (state.messageType === "face") {
-    ctx.fillStyle = "rgba(5, 12, 23, 0.66)";
-    roundRect(W / 2 - 128, H / 2 - 52, 256, 104, 16);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(128, 239, 255, 0.42)";
-    ctx.lineWidth = 2;
-    roundRect(W / 2 - 128, H / 2 - 52, 256, 104, 16);
-    ctx.stroke();
     ctx.fillStyle = "#80efff";
     ctx.font = "56px DSDigital, Bahnschrift, Cascadia Mono, monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(0, 8, 18, 0.88)";
     ctx.shadowColor = "rgba(88, 236, 255, 0.55)";
     ctx.shadowBlur = 14;
+    ctx.strokeText(state.stageMessage, W / 2, H / 2 + 2);
     ctx.fillText(state.stageMessage, W / 2, H / 2 + 2);
     ctx.restore();
     return;
