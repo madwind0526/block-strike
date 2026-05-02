@@ -1728,6 +1728,10 @@ function isCheatKey(event) {
   return event.key === "?" || (event.code === "Slash" && event.shiftKey);
 }
 
+function isPaddleMoveKey(event) {
+  return event.code === "ArrowLeft" || event.code === "ArrowRight" || event.code === "KeyA" || event.code === "KeyD";
+}
+
 function openCommandMode() {
   if (state.mode !== "playing") return;
   state.debugPreviousPaused = state.paused;
@@ -1838,6 +1842,10 @@ window.addEventListener("keydown", (event) => {
     return;
   }
   keys.add(event.code);
+  if (isPaddleMoveKey(event) && state.mode === "playing") {
+    event.preventDefault();
+    pointerX = null;
+  }
   if (event.code === "Enter") {
     event.preventDefault();
     confirmScreenAction();
