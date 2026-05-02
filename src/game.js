@@ -1692,6 +1692,13 @@ function handleSpaceAction() {
   togglePause();
 }
 
+function holdForPointerExit(event) {
+  if (isTouchPointer(event)) return;
+  if (state.mode !== "playing" || state.paused) return;
+  state.paused = true;
+  setMessage("Paused", 0.8);
+}
+
 function isTouchPointer(event) {
   return event.pointerType === "touch" || event.pointerType === "pen";
 }
@@ -1941,7 +1948,10 @@ canvas.addEventListener("pointercancel", () => {
   swipeStart = null;
 });
 canvas.addEventListener("pointerleave", (event) => {
-  if (!canvas.hasPointerCapture?.(event.pointerId)) pointerX = null;
+  if (!canvas.hasPointerCapture?.(event.pointerId)) {
+    pointerX = null;
+    holdForPointerExit(event);
+  }
 });
 
 updateAppHeight();
