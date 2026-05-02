@@ -986,6 +986,10 @@ body {
     bottom: 108px;
   }
 
+  #score-value {
+    font-size: clamp(19px, 5.3vw, 28px);
+  }
+
   .cheat-status {
     right: 42px;
     bottom: 108px;
