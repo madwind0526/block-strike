@@ -272,6 +272,13 @@ body {
   touch-action: none;
 }
 
+@media (pointer: coarse), (max-width: 640px) {
+  #game {
+    width: 92%;
+    justify-self: center;
+  }
+}
+
 .item-bar {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
