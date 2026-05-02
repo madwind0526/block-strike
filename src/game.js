@@ -1671,10 +1671,16 @@ function showGameOver() {
 
   if (!state.cheatUsed && qualifiesForLeaderboard(state.pendingRankScore)) {
     state.mode = "nameEntry";
-    overlay.prompt.textContent = "Enter Name";
-    overlay.nameEntry.classList.add("visible");
     overlay.nameInput.value = "";
-    overlay.nameInput.focus();
+    if (isMobileLayout()) {
+      overlay.prompt.textContent = enterPrompt("Enter Name");
+      overlay.nameEntry.classList.remove("visible");
+      overlay.nameInput.blur();
+    } else {
+      overlay.prompt.textContent = "Enter Name";
+      overlay.nameEntry.classList.add("visible");
+      overlay.nameInput.focus();
+    }
   } else if (!state.cheatUsed) {
     showRankingScreen();
   } else {
@@ -1685,7 +1691,10 @@ function showGameOver() {
 
 function submitPlayerName() {
   if (state.mode !== "nameEntry") return;
-  const name = sanitizePlayerName(overlay.nameInput.value);
+  const inputName = isMobileLayout()
+    ? window.prompt("Enter name in English, max 10 characters.", "") || ""
+    : overlay.nameInput.value;
+  const name = sanitizePlayerName(inputName);
   const updated = addLeaderboardEntry(name, state.pendingRankScore, state.pendingRankStage);
   showRankingScreen(updated);
 }

@@ -986,7 +986,9 @@ body {
     bottom: 108px;
   }
 
-  #score-value {
+  #score-value,
+  #rank-value,
+  .mode-status {
     font-size: clamp(19px, 5.3vw, 28px);
   }
 
