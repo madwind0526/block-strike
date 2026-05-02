@@ -251,13 +251,23 @@ body {
   height: clamp(15px, 4.6vw, 22px);
 }
 
+.game-wrap {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  align-self: center;
+  justify-self: stretch;
+  min-width: 0;
+}
+
 #game {
   display: block;
   width: 100%;
   max-width: 100%;
   height: auto;
   aspect-ratio: 506 / 760;
-  align-self: center;
+  align-self: stretch;
   justify-self: stretch;
   min-height: 0;
   min-width: 0;
@@ -270,6 +280,10 @@ body {
     inset 0 0 48px rgba(35, 99, 175, 0.25),
     0 8px 16px rgba(0, 0, 0, 0.54);
   touch-action: none;
+}
+
+.face-nav {
+  display: none;
 }
 
 @media (pointer: coarse), (max-width: 640px) {
@@ -299,10 +313,40 @@ body {
     max-width: 142px;
   }
 
-  #game {
+  .game-wrap {
     width: 86%;
     align-self: start;
     justify-self: center;
+  }
+
+  .face-nav {
+    position: absolute;
+    top: 53%;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 62px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(1, 9, 19, 0.04);
+    color: rgba(228, 248, 255, 0.72);
+    font-family: "DSDigital", Bahnschrift, "Cascadia Mono", monospace;
+    font-size: 54px;
+    line-height: 1;
+    text-shadow:
+      0 3px 8px rgba(0, 0, 0, 0.9),
+      0 0 14px rgba(88, 236, 255, 0.4);
+    transform: translateY(-50%);
+    touch-action: manipulation;
+  }
+
+  .face-left {
+    left: 8px;
+  }
+
+  .face-right {
+    right: 8px;
   }
 }
 

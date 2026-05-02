@@ -64,6 +64,11 @@ const hud = {
   shield: document.getElementById("shield-value"),
 };
 
+const faceNav = {
+  left: document.getElementById("face-left"),
+  right: document.getElementById("face-right"),
+};
+
 const overlay = {
   root: document.getElementById("screen-overlay"),
   logo: document.querySelector(".overlay-logo"),
@@ -1880,6 +1885,20 @@ window.visualViewport?.addEventListener("resize", updateAppHeight);
 window.visualViewport?.addEventListener("scroll", updateAppHeight);
 
 document.getElementById("btn-pause").addEventListener("click", togglePause);
+
+faceNav.left.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  unlockAudio();
+  switchFace(-1);
+});
+
+faceNav.right.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  unlockAudio();
+  switchFace(1);
+});
 
 hud.logo.addEventListener("click", (event) => {
   if (state.mode !== "playing" || !debugUi.root.classList.contains("hidden")) return;
