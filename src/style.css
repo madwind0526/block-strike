@@ -1004,6 +1004,43 @@ body {
     font-size: 9px;
   }
 
+  .debug-overlay {
+    padding: 0;
+    justify-items: center;
+  }
+
+  .debug-panel {
+    width: min(74%, 280px);
+    justify-items: center;
+    padding: 22px 18px 20px;
+  }
+
+  .debug-title {
+    font-size: 22px;
+  }
+
+  .debug-field,
+  .debug-actions {
+    width: min(100%, 238px);
+  }
+
+  .debug-field span {
+    font-size: 13px;
+  }
+
+  .debug-field select,
+  .debug-field input {
+    min-height: 34px;
+    font-size: 18px;
+    text-align: center;
+    text-align-last: center;
+  }
+
+  .debug-actions button {
+    min-height: 34px;
+    font-size: 16px;
+  }
+
   .screen-overlay {
     overflow: hidden;
     padding: 30px 18px;
