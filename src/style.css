@@ -76,7 +76,7 @@ body {
 .top-board {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(70px, 0.88fr) minmax(108px, 1.2fr) minmax(74px, 0.95fr);
+  grid-template-columns: minmax(66px, 0.86fr) minmax(104px, 1.1fr) minmax(66px, 0.86fr);
   align-items: start;
   gap: clamp(4px, 1.4vw, 8px);
   padding: clamp(10px, 3.2vw, 18px) clamp(10px, 3.2vw, 18px) clamp(9px, 2.8vw, 15px);
@@ -208,9 +208,12 @@ body {
 
 .score-panel {
   display: grid;
+  width: 100%;
+  min-width: 0;
   min-height: 100%;
   align-content: space-between;
   gap: clamp(5px, 1.8vw, 9px);
+  justify-items: stretch;
 }
 
 .score-panel .mini-panel {
@@ -223,10 +226,12 @@ body {
 }
 
 .lives-panel {
+  width: 100%;
+  min-width: 0;
   min-height: 54px;
   padding: 0;
   text-align: right;
-  justify-self: end;
+  justify-self: stretch;
 }
 
 .lives-panel span {
@@ -241,7 +246,7 @@ body {
   gap: clamp(2px, 1vw, 4px) clamp(3px, 1.2vw, 5px);
   margin-top: 7px;
   direction: rtl;
-  width: max-content;
+  width: 100%;
   margin-left: auto;
 }
 
@@ -395,6 +400,7 @@ body {
   position: absolute;
   inset: 12px;
   z-index: 10;
+  isolation: isolate;
   display: grid;
   justify-items: center;
   align-content: center;
@@ -407,6 +413,16 @@ body {
   color: #ffffff;
   text-align: center;
   touch-action: manipulation;
+}
+
+.intro-screen::before,
+.gameover-screen::before,
+.ranking-screen::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  z-index: -1;
+  background: #000000;
 }
 
 .gameover-screen {
