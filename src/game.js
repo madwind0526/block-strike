@@ -32,8 +32,24 @@ const SOUND_POOL_SIZE = 6;
 const LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const BREAKABLE_SPECIAL_TYPES = ["rocket", "slow", "x3", "wide", "bomb"];
 const SPECIAL_TYPE_SET = new Set([...BREAKABLE_SPECIAL_TYPES, "shield"]);
+const LAUNCH_POWER_TYPES = ["rocket", "slow", "x3", "wide", "bomb"];
+const LAUNCH_POWER_KEYS = {
+  Digit1: "rocket",
+  Numpad1: "rocket",
+  Digit2: "slow",
+  Numpad2: "slow",
+  Digit3: "x3",
+  Numpad3: "x3",
+  Digit4: "wide",
+  Numpad4: "wide",
+  Digit5: "bomb",
+  Numpad5: "bomb",
+};
 const INFI_BLOCK_START_STAGE = 10;
 const MAX_INFI_BLOCKS = 7;
+const FAST_SPEED_MULTIPLIER = 2;
+const FAST_SCORE_MULTIPLIER = 1.5;
+const BOMB_BALL_DURATION = 8000;
 
 function isMobileLayout() {
   return window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 640;
@@ -76,6 +92,7 @@ const overlay = {
   topRanks: document.getElementById("overlay-topranks"),
   score: document.getElementById("overlay-score"),
   prompt: document.getElementById("overlay-prompt"),
+  introOptions: document.getElementById("intro-options"),
   nameEntry: document.getElementById("name-entry"),
   nameInput: document.getElementById("player-name"),
   rankList: document.getElementById("rank-list"),
@@ -108,6 +125,8 @@ const state = {
   mode: "intro",
   stageNumber: INITIAL_STAGE,
   score: INITIAL_SCORE,
+  gameVariant: "classic",
+  speedMode: "normal",
   lives: 3,
   immortal: false,
   godMode: false,
@@ -123,6 +142,7 @@ const state = {
   paddleHits: 0,
   speedSteps: 0,
   rockets: [],
+  launchInventory: { rocket: 0, slow: 0, x3: 0, wide: 0, bomb: 0 },
   paddle: {
     x: W / 2 - BASE_PADDLE_W / 2,
     y: H - 106,
@@ -325,7 +345,7 @@ function rand(seed) {
 }
 
 function makeBall(x = state.paddle.x + state.paddle.w / 2, y = state.paddle.y - 17, angle = -Math.PI / 2) {
-  const speed = 280 + Math.min(state.stageNumber * 2, 80);
+  const speed = (280 + Math.min(state.stageNumber * 2, 80)) * initialSpeedMultiplier();
   return {
     x,
     y,
@@ -334,7 +354,17 @@ function makeBall(x = state.paddle.x + state.paddle.w / 2, y = state.paddle.y - 
     vy: Math.sin(angle) * speed,
     baseSpeed: speed,
     stuck: true,
+    bomb: false,
+    bombUntil: 0,
   };
+}
+
+function initialSpeedMultiplier() {
+  return state.speedMode === "fast" ? FAST_SPEED_MULTIPLIER : 1;
+}
+
+function scoreMultiplier() {
+  return state.speedMode === "fast" ? FAST_SCORE_MULTIPLIER : 1;
 }
 
 function createBlock(row, col, stageNumber, faceIndex, pattern, label) {
@@ -606,6 +636,7 @@ function startGame() {
   state.mode = "playing";
   state.score = INITIAL_SCORE;
   state.lives = 3;
+  resetLaunchInventory();
   state.immortal = false;
   state.godMode = false;
   state.fullLivesCheat = false;
@@ -617,6 +648,10 @@ function startGame() {
   startStage(INITIAL_STAGE);
   state.messageTimer = 0;
   hideOverlay();
+}
+
+function resetLaunchInventory() {
+  state.launchInventory = { rocket: 0, slow: 0, x3: 0, wide: 0, bomb: 0 };
 }
 
 function setMessage(text, seconds = 1.5) {
@@ -773,14 +808,27 @@ function damageBlock(block, amount = 1, source = "ball", sourceBall = null) {
     block.alive = false;
     playBlockBreakSound(block);
     addScore(block.scoreValue, block.x + block.w / 2, block.y + block.h / 2);
-    activateSpecial(block, source, sourceBall);
+    handleSpecialBlockBreak(block, source, sourceBall);
     burst(block.x + block.w / 2, block.y + block.h / 2, "#ffffff", 12);
     return true;
   }
   return false;
 }
 
+function handleSpecialBlockBreak(block, source = "ball", sourceBall = null) {
+  if (!block.special) return;
+  if (state.gameVariant === "launch" && LAUNCH_POWER_TYPES.includes(block.special)) {
+    collectLaunchPower(block.special);
+    return;
+  }
+  activateSpecial(block, source, sourceBall);
+}
+
 function playBlockBreakSound(block) {
+  if (state.gameVariant === "launch" && LAUNCH_POWER_TYPES.includes(block.special)) {
+    playSound("block");
+    return;
+  }
   if (block.special === "rocket") {
     playSound("rocket");
   } else if (block.special === "slow") {
@@ -792,8 +840,14 @@ function playBlockBreakSound(block) {
   }
 }
 
+function collectLaunchPower(type) {
+  if (!LAUNCH_POWER_TYPES.includes(type)) return;
+  state.launchInventory[type]++;
+  setMessage(`${specialLabel(type)} +1`, 1.1);
+}
+
 function addScore(points, x, y) {
-  const amount = Math.max(0, Math.floor(points));
+  const amount = Math.max(0, Math.floor(points * scoreMultiplier()));
   if (amount <= 0) return;
   state.score += amount;
   state.scorePopups.push({
@@ -826,6 +880,37 @@ function activateSpecial(block, source = "ball", sourceBall = null) {
   }
 }
 
+function useLaunchPower(type) {
+  if (state.mode !== "playing" || state.gameVariant !== "launch") return false;
+  if (!LAUNCH_POWER_TYPES.includes(type)) return false;
+  if (state.launchInventory[type] <= 0) {
+    setMessage(`${specialLabel(type)} Empty`, 0.8);
+    return true;
+  }
+  state.launchInventory[type]--;
+  if (type === "x3") {
+    splitBalls(primaryLaunchBall());
+    setMessage("x3 Launch", 1.2);
+  } else if (type === "slow") {
+    applySlowBlock();
+    setMessage("Slow Motion", 1.2);
+  } else if (type === "wide") {
+    state.wideUntil = performance.now() + WIDE_DURATION;
+    setMessage("Wide Bar", 1.2);
+  } else if (type === "rocket") {
+    fireRocket();
+    setMessage("Rocket Strike", 1.2);
+  } else if (type === "bomb") {
+    armBombBalls();
+    setMessage("Bomb Balls", 1.2);
+  }
+  return true;
+}
+
+function primaryLaunchBall() {
+  return state.balls.find(ball => !ball.stuck) || state.balls[0] || null;
+}
+
 function splitBalls(sourceBall = null) {
   const source = sourceBall || state.balls[0];
   if (!source || state.balls.length >= 9) return;
@@ -839,9 +924,21 @@ function splitBalls(sourceBall = null) {
       vx: Math.cos(baseAngle + offset) * speed,
       vy: Math.sin(baseAngle + offset) * speed,
       baseSpeed: source.baseSpeed,
-      stuck: false,
+      stuck: source.stuck,
+      bomb: false,
+      bombUntil: 0,
     });
   });
+}
+
+function armBombBalls() {
+  if (state.balls.length === 0) return;
+  const until = performance.now() + BOMB_BALL_DURATION;
+  state.balls.forEach(ball => {
+    ball.bomb = true;
+    ball.bombUntil = until;
+  });
+  playSound("bomb");
 }
 
 function explodeAtBlock(originBlock) {
@@ -856,6 +953,43 @@ function explodeAtBlock(originBlock) {
     if (distance === 1) damageBlock(block, 1, "bomb");
   });
   burst(x, y, "#ff6f7f", 42);
+}
+
+function explodeBombBallAtBlock(ball, originBlock) {
+  const x = originBlock.x + originBlock.w / 2;
+  const y = originBlock.y + originBlock.h / 2;
+  playSound("bomb");
+  state.explosions.push({ x, y, radius: BLOCK_W * 1.45, life: 0.48, age: 0 });
+  const face = activeFace();
+  damageBlock(originBlock, 1, "bomb");
+  face.blocks.forEach(block => {
+    if (!block.alive || block === originBlock) return;
+    const distance = Math.abs(block.row - originBlock.row) + Math.abs(block.col - originBlock.col);
+    if (distance === 1) damageBlock(block, 1, "bomb");
+  });
+  burst(x, y, "#ff6f7f", 42);
+  return settleBombBall(ball, x, y);
+}
+
+function explodeBombBallInAir(ball) {
+  playSound("bomb");
+  state.explosions.push({ x: ball.x, y: ball.y, radius: BLOCK_W * 1.1, life: 0.42, age: 0 });
+  burst(ball.x, ball.y, "#ff6f7f", 34);
+  return settleBombBall(ball, ball.x, ball.y);
+}
+
+function settleBombBall(ball, x, y) {
+  const otherActiveBalls = state.balls.filter(other => other !== ball && !other.remove).length;
+  if (otherActiveBalls <= 0) {
+    ball.bomb = false;
+    ball.bombUntil = 0;
+    ball.x = x;
+    ball.y = Math.min(y + ball.r + 2, state.paddle.y - ball.r - 2);
+    setBallSpeed(ball, ballTravelSpeed(ball));
+    return false;
+  }
+  ball.remove = true;
+  return true;
 }
 
 function fireRocket() {
@@ -879,9 +1013,14 @@ function updateBalls(dt) {
   const remaining = [];
 
   for (const ball of state.balls) {
+    if (ball.remove) continue;
     if (ball.stuck) {
       remaining.push(ball);
       continue;
+    }
+
+    if (ball.bomb && ball.bombUntil > 0 && performance.now() >= ball.bombUntil) {
+      if (explodeBombBallInAir(ball)) continue;
     }
 
     ball.x += ball.vx * dt;
@@ -920,6 +1059,10 @@ function updateBalls(dt) {
       const prevX = ball.x - ball.vx * dt;
       const prevY = ball.y - ball.vy * dt;
       resolveBlockBounce(ball, block, prevX, prevY);
+      if (ball.bomb) {
+        if (explodeBombBallAtBlock(ball, block)) break;
+        break;
+      }
       damageBlock(block, 1, "ball", ball);
       break;
     }
@@ -927,7 +1070,7 @@ function updateBalls(dt) {
     if (ball.y - ball.r <= H + 30) remaining.push(ball);
   }
 
-  state.balls = remaining.filter(ball => ball.y - ball.r <= H + 24);
+  state.balls = remaining.filter(ball => !ball.remove && ball.y - ball.r <= H + 24);
   if (state.balls.length === 0) loseLife();
 }
 
@@ -1248,12 +1391,18 @@ function drawPaddle() {
 
 function drawBall(ball) {
   ctx.save();
-  ctx.shadowColor = "#52e7ff";
+  ctx.shadowColor = ball.bomb ? "#ff5b5b" : "#52e7ff";
   ctx.shadowBlur = 22;
   const g = ctx.createRadialGradient(ball.x - 5, ball.y - 5, 2, ball.x, ball.y, ball.r + 6);
-  g.addColorStop(0, "#ffffff");
-  g.addColorStop(0.4, "#c9f7ff");
-  g.addColorStop(1, "#5adfff");
+  if (ball.bomb) {
+    g.addColorStop(0, "#fff1e8");
+    g.addColorStop(0.38, "#ff5858");
+    g.addColorStop(1, "#9e1212");
+  } else {
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.4, "#c9f7ff");
+    g.addColorStop(1, "#5adfff");
+  }
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
@@ -1452,6 +1601,7 @@ function renderLeaderboard(entries = loadLeaderboard()) {
 function hideOverlay() {
   stopLoopSound();
   overlay.root.className = "screen-overlay hidden";
+  overlay.introOptions.classList.add("hidden");
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
   overlay.nextStage.style.display = "";
@@ -1468,9 +1618,26 @@ function showIntro() {
   overlay.topRanks.style.display = "";
   overlay.title.textContent = "";
   overlay.score.textContent = "";
+  renderIntroOptions();
+  overlay.introOptions.classList.remove("hidden");
   overlay.prompt.textContent = enterPrompt("Start");
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
+}
+
+function renderIntroOptions() {
+  overlay.introOptions.querySelectorAll("[data-option-group]").forEach(button => {
+    const group = button.dataset.optionGroup;
+    const value = button.dataset.optionValue;
+    button.classList.toggle("active", state[group] === value);
+  });
+}
+
+function selectIntroOption(group, value) {
+  if (state.mode !== "intro") return;
+  if (group !== "gameVariant" && group !== "speedMode") return;
+  state[group] = value;
+  renderIntroOptions();
 }
 
 function showGameOver() {
@@ -1482,6 +1649,7 @@ function showGameOver() {
   overlay.nextStage.style.display = "";
   overlay.title.textContent = "";
   overlay.score.textContent = `Score ${formatScore(state.pendingRankScore)}`;
+  overlay.introOptions.classList.add("hidden");
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
 
@@ -1517,6 +1685,7 @@ function showRankingScreen(entries = loadLeaderboard()) {
   overlay.topRanks.style.display = "block";
   overlay.title.textContent = "";
   overlay.score.textContent = "";
+  overlay.introOptions.classList.add("hidden");
   overlay.nameEntry.classList.remove("visible");
   renderLeaderboard(entries);
   overlay.rankList.classList.add("visible");
@@ -1532,6 +1701,7 @@ function showNextStageScreen(stageNumber) {
   overlay.topRanks.style.display = "";
   overlay.title.textContent = "";
   overlay.score.textContent = `Stage ${stageNumber}`;
+  overlay.introOptions.classList.add("hidden");
   overlay.nameEntry.classList.remove("visible");
   overlay.rankList.classList.remove("visible");
   overlay.prompt.textContent = enterPrompt("Continue");
@@ -1643,7 +1813,7 @@ function updateHud() {
       ? '<img src="assets/images/heart-filled.png" alt="life" />'
       : '<img src="assets/images/heart-empty.png" alt="" />'
   ).join("");
-  const counts = countRemainingSpecials();
+  const counts = powerItemCounts();
   hud.rocket.textContent = counts.rocket;
   hud.slow.textContent = counts.slow;
   hud.x3.textContent = counts.x3;
@@ -1658,6 +1828,18 @@ function updateHud() {
   updatePowerItemState(hud.shield, counts.shield);
   updateCheatStatus();
   updateFaceStatus();
+}
+
+function powerItemCounts() {
+  if (state.gameVariant !== "launch") return countRemainingSpecials();
+  return {
+    rocket: state.launchInventory.rocket,
+    slow: state.launchInventory.slow,
+    x3: state.launchInventory.x3,
+    wide: state.launchInventory.wide,
+    bomb: state.launchInventory.bomb,
+    shield: countRemainingSpecials().shield,
+  };
 }
 
 function updatePowerItemState(valueElement, count) {
@@ -1869,9 +2051,36 @@ window.addEventListener("keydown", (event) => {
     }
     return;
   }
+  if (state.mode === "intro") {
+    if (event.code === "KeyC") {
+      event.preventDefault();
+      selectIntroOption("gameVariant", "classic");
+      return;
+    }
+    if (event.code === "KeyL") {
+      event.preventDefault();
+      selectIntroOption("gameVariant", "launch");
+      return;
+    }
+    if (event.code === "KeyN") {
+      event.preventDefault();
+      selectIntroOption("speedMode", "normal");
+      return;
+    }
+    if (event.code === "KeyF") {
+      event.preventDefault();
+      selectIntroOption("speedMode", "fast");
+      return;
+    }
+  }
   if (isCheatKey(event) && state.mode === "playing") {
     event.preventDefault();
     openCommandMode();
+    return;
+  }
+  if (state.mode === "playing" && state.gameVariant === "launch" && LAUNCH_POWER_KEYS[event.code]) {
+    event.preventDefault();
+    if (!event.repeat) useLaunchPower(LAUNCH_POWER_KEYS[event.code]);
     return;
   }
   keys.add(event.code);
@@ -1907,6 +2116,18 @@ window.visualViewport?.addEventListener("scroll", updateAppHeight);
 
 document.getElementById("btn-pause").addEventListener("click", togglePause);
 
+LAUNCH_POWER_TYPES.forEach(type => {
+  const item = hud[type]?.closest(".item.power");
+  if (!item) return;
+  item.addEventListener("pointerdown", (event) => {
+    if (state.gameVariant !== "launch") return;
+    event.preventDefault();
+    event.stopPropagation();
+    unlockAudio();
+    useLaunchPower(type);
+  });
+});
+
 faceNav.left.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   event.stopPropagation();
@@ -1930,6 +2151,15 @@ hud.logo.addEventListener("click", (event) => {
 
 overlay.nameInput.addEventListener("input", () => {
   overlay.nameInput.value = sanitizePlayerName(overlay.nameInput.value);
+});
+
+overlay.introOptions.addEventListener("pointerdown", (event) => {
+  const button = event.target.closest("[data-option-group]");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  unlockAudio();
+  selectIntroOption(button.dataset.optionGroup, button.dataset.optionValue);
 });
 
 debugUi.command.addEventListener("change", updateDebugStageField);

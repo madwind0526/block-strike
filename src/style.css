@@ -734,6 +734,44 @@ body {
     drop-shadow(0 0 18px rgba(71, 206, 255, 0.28));
 }
 
+.intro-options {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin-top: -4px;
+  font-family: "DSDigital", Bahnschrift, "Cascadia Mono", monospace;
+  text-transform: uppercase;
+}
+
+.intro-options.hidden {
+  display: none;
+}
+
+.intro-options button {
+  min-width: min(360px, 82vw);
+  border: 0;
+  padding: 1px 14px;
+  background: linear-gradient(90deg, transparent, rgba(35, 184, 255, 0.16), transparent);
+  color: rgba(235, 242, 248, 0.62);
+  font: inherit;
+  font-size: clamp(21px, 5.4vw, 30px);
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
+  cursor: pointer;
+}
+
+.intro-options button:nth-child(3) {
+  margin-top: 10px;
+}
+
+.intro-options button.active {
+  color: var(--hud-value);
+  text-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.9),
+    0 0 13px rgba(88, 236, 255, 0.64);
+}
+
 .overlay-title {
   color: #ff4f68;
   font-family: "DSDigital", Bahnschrift, monospace;

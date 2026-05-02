@@ -12,12 +12,14 @@ https://madwind0526.github.io/block-strike/
 
 Desktop:
 
+- Intro options: `C` Classic, `L` Launch, `N` Normal speed, `F` Fast speed.
 - `Left` / `Right`: move the paddle.
 - Mouse move: move the paddle.
 - Click or `Space`: launch the attached ball.
 - `Space`: hold or resume during play.
 - `Enter`: start, continue, or restart from menu screens.
 - `Up` / `Down`: switch between block faces.
+- Launch mode power keys: `1` Rocket, `2` Slow, `3` x3, `4` Wide, `5` Bomb.
 
 Mobile:
 
@@ -25,6 +27,7 @@ Mobile:
 - Double tap the game screen: launch, hold, or resume.
 - Double tap menu screens: start, continue, or restart.
 - Tap the left or right face buttons: switch between block faces.
+- In Launch mode, tap a stored power icon to use it.
 
 ## Gameplay
 
@@ -37,6 +40,9 @@ Mobile:
 - If a rolling block overlaps the ball, the ball is pushed downward to the nearest open position.
 - Each stage has three block faces. Clear all faces to advance.
 - Rolling time only runs on the currently visible face.
+- Classic mode activates power blocks immediately.
+- Launch mode stores power blocks and lets the player use them later.
+- Fast speed starts balls at 2x speed and awards 1.5x score.
 
 ## Blocks
 
