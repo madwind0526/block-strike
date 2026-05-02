@@ -366,6 +366,31 @@ body {
   .face-right {
     right: 8px;
   }
+
+  .screen-overlay {
+    padding: 30px 18px;
+  }
+
+  .intro-screen {
+    gap: 16px;
+  }
+
+  .overlay-logo {
+    width: min(76%, 300px);
+  }
+
+  .intro-options {
+    width: min(100%, 310px);
+  }
+
+  .intro-options button {
+    font-size: clamp(20px, 6vw, 26px);
+  }
+
+  .overlay-prompt {
+    font-size: clamp(26px, 7vw, 31px);
+    letter-spacing: 0.02em;
+  }
 }
 
 .item-bar {
@@ -942,6 +967,57 @@ body {
 
 .rank-list .rank-score {
   color: var(--hud-value);
+}
+
+@media (pointer: coarse), (max-width: 640px) {
+  .item-bar {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .item.pause {
+    display: none;
+  }
+
+  .face-status {
+    bottom: 108px;
+  }
+
+  .screen-overlay {
+    overflow: hidden;
+    padding: 30px 18px;
+  }
+
+  .screen-overlay > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .intro-screen {
+    gap: 16px;
+  }
+
+  .overlay-logo {
+    width: min(76%, 300px);
+    max-width: 100%;
+  }
+
+  .intro-options {
+    width: min(100%, 310px);
+  }
+
+  .intro-options button {
+    width: 100%;
+    min-width: 0;
+    font-size: clamp(20px, 6vw, 26px);
+  }
+
+  .overlay-prompt {
+    max-width: 100%;
+    font-size: clamp(26px, 7vw, 31px);
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    overflow-wrap: anywhere;
+  }
 }
 
 @keyframes prompt-blink {

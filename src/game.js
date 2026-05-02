@@ -4,6 +4,7 @@ const ctx = canvas.getContext("2d");
 const W = canvas.width;
 const H = canvas.height;
 const TOP_GAP = 70;
+const MOBILE_TOP_GAP = 100;
 const BLOCK_COLS = 7;
 const DEFAULT_BLOCK_ROWS = 5;
 const MOBILE_BLOCK_ROWS = 4;
@@ -14,7 +15,6 @@ const GRID_W = W - GRID_MARGIN_X * 2;
 const BLOCK_W = (GRID_W - (BLOCK_COLS - 1) * BLOCK_GAP) / BLOCK_COLS;
 const BLOCK_H = BLOCK_W;
 const GRID_X = GRID_MARGIN_X;
-const GRID_Y = TOP_GAP;
 const MAX_LIVES = 5;
 const EXPLOSION_RADIUS = BLOCK_W * 2;
 const BASE_PADDLE_W = 115;
@@ -58,6 +58,10 @@ function isMobileLayout() {
 
 function blockRowCount() {
   return isMobileLayout() ? MOBILE_BLOCK_ROWS : DEFAULT_BLOCK_ROWS;
+}
+
+function blockTopGap() {
+  return isMobileLayout() ? MOBILE_TOP_GAP : TOP_GAP;
 }
 
 function enterPrompt(action) {
@@ -373,7 +377,7 @@ function createBlock(row, col, stageNumber, faceIndex, pattern, label) {
   const isShield = pattern === "shield";
   const special = SPECIAL_TYPE_SET.has(pattern) ? pattern : null;
   const x = GRID_X + col * (BLOCK_W + BLOCK_GAP);
-  const y = GRID_Y + row * (BLOCK_H + BLOCK_GAP);
+  const y = blockTopGap() + row * (BLOCK_H + BLOCK_GAP);
   const hp = blockHp(label);
   const scoreValue = special ? specialScore(stageNumber, faceIndex, row, col) : blockScore(label);
 
