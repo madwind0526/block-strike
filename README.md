@@ -19,6 +19,7 @@ http://127.0.0.1:8000/?screen=nextstage
 ```
 
 The game is a static HTML/CSS/JS app, so it can also be uploaded to a static web host and opened from a mobile browser.
+The layout updates its app height from the browser viewport so mobile address bars and different phone sizes are handled without clipping the cabinet.
 
 ## Current Player Flow
 
@@ -59,7 +60,7 @@ The lower-right cheat status overlay shows `godMode`, `fullLives`, `Immortal`, a
 - `goodGame`: opens the Game Over flow.
 - `immortal`: prevents life loss after missing the ball.
 - `jumpTo`: jumps directly to the requested stage and applies that stage's rules.
-- `resetData`: resets the current score to 0 and clears saved ranking data, including sample ranking data.
+- `resetData`: resets the current score to 0 and clears saved ranking data.
 - `showRank`: opens the Top Ranks screen.
 
 ## Current Visual Design

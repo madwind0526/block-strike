@@ -22,23 +22,11 @@ const PADDLE_BOUNCE_INFLUENCE = 1.4;
 const INITIAL_STAGE = 1;
 const INITIAL_SCORE = 0;
 const LEADERBOARD_KEY = "rollingBlockStrikeLeaderboard";
-const LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const LEADERBOARD_LIMIT = 10;
 const DOUBLE_TAP_MS = 340;
 const DOUBLE_TAP_DISTANCE = 32;
 const SOUND_POOL_SIZE = 6;
-const SAMPLE_LEADERBOARD = [
-  { name: "HJ, SHIN", score: "1265987452325654788", stage: 26987425 },
-  { name: "JAY", score: 18450000, stage: 430 },
-  { name: "MINA", score: 17200000, stage: 405 },
-  { name: "KIM", score: 15980000, stage: 390 },
-  { name: "SORA", score: 14325000, stage: 360 },
-  { name: "ALEX", score: 12888000, stage: 332 },
-  { name: "NOAH", score: 11456000, stage: 310 },
-  { name: "LUNA", score: 9800000, stage: 286 },
-  { name: "RYU", score: 7650000, stage: 244 },
-  { name: "JIN", score: 5120000, stage: 198 },
-];
+const LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const SPECIAL_BLOCK_TOTAL = 5;
 const BREAKABLE_SPECIAL_TYPES = ["rocket", "slow", "x3", "wide", "bomb"];
 const SPECIAL_TYPE_SET = new Set([...BREAKABLE_SPECIAL_TYPES, "shield"]);
@@ -1307,34 +1295,35 @@ function drawMessage() {
   ctx.restore();
 }
 
+function updateAppHeight() {
+  const height = window.visualViewport?.height || window.innerHeight;
+  document.documentElement.style.setProperty("--app-height", `${height}px`);
+}
+
 function loadLeaderboard() {
   try {
-    const sampleDisabled = localStorage.getItem(LEADERBOARD_SAMPLE_DISABLED_KEY) === "1";
     const raw = localStorage.getItem(LEADERBOARD_KEY);
-    const saved = raw === null ? null : JSON.parse(raw);
-    const source = Array.isArray(saved)
-      ? (saved.length && !sampleDisabled ? [...saved, ...SAMPLE_LEADERBOARD] : saved)
-      : (sampleDisabled ? [] : SAMPLE_LEADERBOARD);
-    return source
+    const saved = raw === null ? [] : JSON.parse(raw);
+    return (Array.isArray(saved) ? saved : [])
       .filter(entry => typeof entry?.name === "string" && toScoreBigInt(entry?.score) !== null)
       .map(entry => ({ name: entry.name, score: entry.score, stage: Number.isFinite(entry.stage) ? entry.stage : null }))
       .sort((a, b) => compareScores(b.score, a.score))
       .slice(0, LEADERBOARD_LIMIT);
   } catch {
-    return SAMPLE_LEADERBOARD.slice();
+    return [];
   }
 }
 
 function saveLeaderboard(entries) {
   localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries.slice(0, LEADERBOARD_LIMIT)));
-  localStorage.setItem(LEADERBOARD_SAMPLE_DISABLED_KEY, "1");
+  localStorage.setItem(LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY, "1");
 }
 
 function resetPlayerData() {
   state.score = 0;
   state.pendingRankScore = 0;
   localStorage.setItem(LEADERBOARD_KEY, "[]");
-  localStorage.setItem(LEADERBOARD_SAMPLE_DISABLED_KEY, "1");
+  localStorage.setItem(LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY, "1");
 }
 
 function rankForScore(score) {
@@ -1756,6 +1745,9 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("keyup", (event) => keys.delete(event.code));
+window.addEventListener("resize", updateAppHeight);
+window.visualViewport?.addEventListener("resize", updateAppHeight);
+window.visualViewport?.addEventListener("scroll", updateAppHeight);
 
 document.getElementById("btn-pause").addEventListener("click", togglePause);
 
@@ -1815,6 +1807,7 @@ canvas.addEventListener("pointerleave", (event) => {
   if (!canvas.hasPointerCapture?.(event.pointerId)) pointerX = null;
 });
 
+updateAppHeight();
 startStage(INITIAL_STAGE);
 state.score = INITIAL_SCORE;
 state.messageTimer = 0;
