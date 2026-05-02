@@ -53,7 +53,7 @@ Normal block score values:
 
 Power blocks:
 
-- `x3`: splits one ball into three.
+- `x3`: splits the ball that hit it into three.
 - `SLOW`: resets speed increases. If speed is already normal, slows the ball by 10%.
 - `WIDE`: widens the paddle for 20 seconds.
 - `BOMB`: damages adjacent blocks up, down, left, and right.
@@ -75,6 +75,8 @@ Power blocks:
 - Stage 50 and above: level 5-8.
 
 `Infi-Block` starts appearing from Stage 10 and increases gradually up to 7 blocks.
+
+Power blocks start at 1 per face, then increase by 1 every 5 stages. The maximum is 5 on desktop and 4 on mobile.
 
 ## Score And Ranking
 

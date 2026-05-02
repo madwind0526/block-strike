@@ -32,7 +32,6 @@ const SWIPE_MAX_VERTICAL_DRIFT = 45;
 const FACE_SWITCH_DURATION = 0.26;
 const SOUND_POOL_SIZE = 6;
 const LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
-const SPECIAL_BLOCK_TOTAL = 5;
 const BREAKABLE_SPECIAL_TYPES = ["rocket", "slow", "x3", "wide", "bomb"];
 const SPECIAL_TYPE_SET = new Set([...BREAKABLE_SPECIAL_TYPES, "shield"]);
 const INFI_BLOCK_START_STAGE = 10;
@@ -449,7 +448,8 @@ function buildSpecialMap(stageNumber, faceIndex, rows) {
     map.set(`${cell.row}:${cell.col}`, "shield");
   }
 
-  const total = Math.min(SPECIAL_BLOCK_TOTAL, cells.length);
+  const availableCells = Math.max(0, cells.length - cellIndex);
+  const total = Math.min(specialBlockCount(stageNumber), availableCells);
   for (let index = 0; index < total; index++) {
     const cell = cells[cellIndex++];
     if (!cell) break;
@@ -458,6 +458,11 @@ function buildSpecialMap(stageNumber, faceIndex, rows) {
     map.set(`${cell.row}:${cell.col}`, BREAKABLE_SPECIAL_TYPES[specialIndex]);
   }
   return map;
+}
+
+function specialBlockCount(stageNumber) {
+  const maxSpecials = isMobileLayout() ? 4 : 5;
+  return Math.min(maxSpecials, 1 + Math.floor((stageNumber - 1) / 5));
 }
 
 function randomNormalNumber(stageNumber, faceIndex, row, col) {
@@ -753,7 +758,7 @@ function resolveBlockBounce(ball, block, prevX, prevY) {
   }
 }
 
-function damageBlock(block, amount = 1, source = "ball") {
+function damageBlock(block, amount = 1, source = "ball", sourceBall = null) {
   if (!block.alive) return false;
   if (block.type === "solid") {
     playSound("infi");
@@ -771,7 +776,7 @@ function damageBlock(block, amount = 1, source = "ball") {
     block.alive = false;
     playBlockBreakSound(block);
     addScore(block.scoreValue, block.x + block.w / 2, block.y + block.h / 2);
-    activateSpecial(block, source);
+    activateSpecial(block, source, sourceBall);
     burst(block.x + block.w / 2, block.y + block.h / 2, "#ffffff", 12);
     return true;
   }
@@ -804,10 +809,10 @@ function addScore(points, x, y) {
   });
 }
 
-function activateSpecial(block) {
+function activateSpecial(block, source = "ball", sourceBall = null) {
   if (!block.special) return;
   if (block.special === "x3") {
-    splitBalls();
+    splitBalls(sourceBall);
     setMessage("x3 Multiball", 1.4);
   } else if (block.special === "slow") {
     applySlowBlock();
@@ -824,8 +829,8 @@ function activateSpecial(block) {
   }
 }
 
-function splitBalls() {
-  const source = state.balls[0];
+function splitBalls(sourceBall = null) {
+  const source = sourceBall || state.balls[0];
   if (!source || state.balls.length >= 9) return;
   const speed = Math.hypot(source.vx, source.vy);
   const baseAngle = Math.atan2(source.vy, source.vx);
@@ -918,7 +923,7 @@ function updateBalls(dt) {
       const prevX = ball.x - ball.vx * dt;
       const prevY = ball.y - ball.vy * dt;
       resolveBlockBounce(ball, block, prevX, prevY);
-      damageBlock(block, 1);
+      damageBlock(block, 1, "ball", ball);
       break;
     }
 
