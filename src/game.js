@@ -24,6 +24,9 @@ const INITIAL_SCORE = 0;
 const LEADERBOARD_KEY = "rollingBlockStrikeLeaderboard";
 const LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const LEADERBOARD_LIMIT = 10;
+const DOUBLE_TAP_MS = 340;
+const DOUBLE_TAP_DISTANCE = 32;
+const SOUND_POOL_SIZE = 6;
 const SAMPLE_LEADERBOARD = [
   { name: "HJ, SHIN", score: "1265987452325654788", stage: 26987425 },
   { name: "JAY", score: 18450000, stage: 430 },
@@ -43,6 +46,7 @@ const INFI_BLOCK_START_STAGE = 10;
 const MAX_INFI_BLOCKS = 7;
 
 const hud = {
+  logo: document.querySelector(".logo-title"),
   stage: document.getElementById("stage-value"),
   rank: document.getElementById("rank-value"),
   score: document.getElementById("score-value"),
@@ -89,6 +93,7 @@ const cheatStatus = {
 const keys = new Set();
 let pointerX = null;
 let lastTime = performance.now();
+let lastTap = { time: 0, x: 0, y: 0, scope: "" };
 const imageTrims = new WeakMap();
 
 const state = {
@@ -172,13 +177,24 @@ const soundSources = {
   rollingFace: "assets/sounds/Rolling2.mp3",
 };
 
+function createAudio(src) {
+  const audio = new Audio(src);
+  audio.preload = "auto";
+  audio.volume = 0.75;
+  return audio;
+}
+
 const sounds = Object.fromEntries(
-  Object.entries(soundSources).map(([key, src]) => {
-    const audio = new Audio(src);
-    audio.preload = "auto";
-    audio.volume = 0.75;
-    return [key, audio];
-  })
+  Object.entries(soundSources).map(([key, src]) => [key, createAudio(src)])
+);
+const soundPools = Object.fromEntries(
+  Object.entries(soundSources).map(([key, src]) => [
+    key,
+    Array.from({ length: SOUND_POOL_SIZE }, () => createAudio(src)),
+  ])
+);
+const soundPoolCursors = Object.fromEntries(
+  Object.keys(soundSources).map(key => [key, 0])
 );
 let audioUnlocked = false;
 let loopSound = null;
@@ -223,14 +239,25 @@ function unlockAudio() {
   Object.values(sounds).forEach(audio => {
     audio.load();
   });
+  Object.values(soundPools).flat().forEach(audio => {
+    audio.load();
+  });
   resumeModeSound();
 }
 
 function playSound(name) {
-  const source = sounds[name] || sounds.block;
-  if (!source) return;
-  const audio = source.cloneNode();
-  audio.volume = source.volume;
+  const key = sounds[name] ? name : "block";
+  const pool = soundPools[key];
+  if (!audioUnlocked || !pool?.length) return;
+
+  const availableIndex = pool.findIndex(audio => audio.paused || audio.ended);
+  const index = availableIndex >= 0 ? availableIndex : soundPoolCursors[key];
+  soundPoolCursors[key] = (index + 1) % pool.length;
+
+  const audio = pool[index];
+  audio.pause();
+  audio.currentTime = 0;
+  audio.volume = sounds[key].volume;
   audio.play().catch(() => {});
 }
 
@@ -1093,6 +1120,8 @@ function drawBlock(block) {
 }
 
 function drawBlockLabel(block) {
+  const label = block.type === "normal" ? String(Math.max(1, block.hp)) : block.label;
+
   ctx.font = "900 18px Inter, Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -1102,12 +1131,12 @@ function drawBlockLabel(block) {
   ctx.lineWidth = 4;
   ctx.strokeStyle = "rgba(90,36,22,0.32)";
   ctx.fillStyle = "#ffffff";
-  ctx.strokeText(block.label, block.x + block.w / 2, block.y + block.h / 2 + 2);
-  ctx.fillText(block.label, block.x + block.w / 2, block.y + block.h / 2 + 2);
+  ctx.strokeText(label, block.x + block.w / 2, block.y + block.h / 2 + 2);
+  ctx.fillText(label, block.x + block.w / 2, block.y + block.h / 2 + 2);
   ctx.shadowColor = "transparent";
   ctx.fillStyle = "rgba(255,255,255,0.42)";
   ctx.font = "900 17px Inter, Arial, sans-serif";
-  ctx.fillText(block.label, block.x + block.w / 2 - 1, block.y + block.h / 2);
+  ctx.fillText(label, block.x + block.w / 2 - 1, block.y + block.h / 2);
 }
 
 function drawSolidX(block) {
@@ -1518,7 +1547,19 @@ function updateHud() {
   hud.wide.textContent = counts.wide;
   hud.bomb.textContent = counts.bomb;
   hud.shield.textContent = counts.shield;
+  updatePowerItemState(hud.rocket, counts.rocket);
+  updatePowerItemState(hud.slow, counts.slow);
+  updatePowerItemState(hud.x3, counts.x3);
+  updatePowerItemState(hud.wide, counts.wide);
+  updatePowerItemState(hud.bomb, counts.bomb);
+  updatePowerItemState(hud.shield, counts.shield);
   updateCheatStatus();
+}
+
+function updatePowerItemState(valueElement, count) {
+  const item = valueElement.closest(".item.power");
+  if (!item) return;
+  item.classList.toggle("empty", count <= 0);
 }
 
 function updateCheatStatus() {
@@ -1554,6 +1595,28 @@ function handleSpaceAction() {
     return;
   }
   togglePause();
+}
+
+function isTouchPointer(event) {
+  return event.pointerType === "touch" || event.pointerType === "pen";
+}
+
+function updatePointerFromEvent(event) {
+  const rect = canvas.getBoundingClientRect();
+  pointerX = (event.clientX - rect.left) * (W / rect.width);
+}
+
+function consumeDoubleTap(event, scope) {
+  const now = performance.now();
+  const dx = event.clientX - lastTap.x;
+  const dy = event.clientY - lastTap.y;
+  const isDouble =
+    lastTap.scope === scope &&
+    now - lastTap.time <= DOUBLE_TAP_MS &&
+    Math.hypot(dx, dy) <= DOUBLE_TAP_DISTANCE;
+
+  lastTap = { time: isDouble ? 0 : now, x: event.clientX, y: event.clientY, scope };
+  return isDouble;
 }
 
 function confirmScreenAction() {
@@ -1696,6 +1759,13 @@ window.addEventListener("keyup", (event) => keys.delete(event.code));
 
 document.getElementById("btn-pause").addEventListener("click", togglePause);
 
+hud.logo.addEventListener("click", (event) => {
+  if (state.mode !== "playing" || !debugUi.root.classList.contains("hidden")) return;
+  event.preventDefault();
+  unlockAudio();
+  openCommandMode();
+});
+
 overlay.nameInput.addEventListener("input", () => {
   overlay.nameInput.value = sanitizePlayerName(overlay.nameInput.value);
 });
@@ -1713,22 +1783,37 @@ debugUi.root.addEventListener("pointerdown", (event) => {
 overlay.root.addEventListener("pointerdown", (event) => {
   unlockAudio();
   if (event.target === overlay.nameInput) return;
-  if (state.mode === "intro" || state.mode === "ranking" || state.mode === "gameover" || state.mode === "stageClear") {
+  if (state.mode === "intro" || state.mode === "ranking" || state.mode === "gameover" || state.mode === "stageClear" || state.mode === "nameEntry") {
     event.preventDefault();
+    if (isTouchPointer(event) && !consumeDoubleTap(event, "overlay")) return;
     confirmScreenAction();
   }
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  const rect = canvas.getBoundingClientRect();
-  pointerX = (event.clientX - rect.left) * (W / rect.width);
+  updatePointerFromEvent(event);
 });
 
-canvas.addEventListener("pointerdown", () => {
+canvas.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
   unlockAudio();
-  if (state.mode === "playing") launchBalls();
+  updatePointerFromEvent(event);
+  canvas.setPointerCapture?.(event.pointerId);
+  if (state.mode === "playing") {
+    if (isTouchPointer(event)) {
+      if (consumeDoubleTap(event, "game")) handleSpaceAction();
+    } else {
+      launchBalls();
+    }
+  }
 });
-canvas.addEventListener("pointerleave", () => { pointerX = null; });
+canvas.addEventListener("pointerup", (event) => {
+  canvas.releasePointerCapture?.(event.pointerId);
+});
+canvas.addEventListener("pointercancel", () => { pointerX = null; });
+canvas.addEventListener("pointerleave", (event) => {
+  if (!canvas.hasPointerCapture?.(event.pointerId)) pointerX = null;
+});
 
 startStage(INITIAL_STAGE);
 state.score = INITIAL_SCORE;

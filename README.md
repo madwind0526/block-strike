@@ -18,6 +18,8 @@ http://127.0.0.1:8000/?screen=gameover
 http://127.0.0.1:8000/?screen=nextstage
 ```
 
+The game is a static HTML/CSS/JS app, so it can also be uploaded to a static web host and opened from a mobile browser.
+
 ## Current Player Flow
 
 - The game starts with an Intro screen.
@@ -36,11 +38,14 @@ http://127.0.0.1:8000/?screen=nextstage
 
 ## Current Controls
 
-- `Left` / `Right` arrow or mouse: move the paddle.
+- `Left` / `Right` arrow, mouse, or touch drag: move the paddle.
 - Click: launch the ball when it is attached to the paddle.
 - `Space`: launch the attached ball. During active play, `Space` holds or resumes the game.
 - `P`: pause.
 - `?`: open debug command mode during gameplay.
+- Mobile double tap on the game screen: same action as `Space`.
+- Mobile double tap on Intro, Next Stage, Game Over, Top Ranks, or name-entry screens: same action as `Enter`.
+- Logo click/tap during gameplay: open debug command mode.
 
 ## Debug Commands
 
@@ -87,7 +92,7 @@ The lower-right cheat status overlay shows `godMode`, `fullLives`, `Immortal`, a
 
 ## Current Blocks And Power Blocks
 
-Normal blocks use numeric hit levels.
+Normal blocks display their remaining HP. For example, a level 3 block starts at `3`, then shows `2`, then `1`, and breaks on the next hit.
 
 Normal block colors are fixed by level so the same level always uses the same color. Available normal block assets are `yellow`, `orange`, `green`, `blue`, `red`, and `purple`.
 
@@ -102,6 +107,8 @@ Level color order:
 - Level 7 / `80`: dark `purple`
 - Level 8 / `90`: darkest `purple`
 
+The `20`-`90` values are the level score values and color mapping, not the number shown on the block during play.
+
 Each generated face currently places 5 breakable power blocks at random positions. Their types are randomly selected from `ROCKET`, `SLOW`, `x3`, `WIDE`, and `BOMB`.
 
 Power blocks:
@@ -115,7 +122,7 @@ Power blocks:
 
 ## Current Scoring
 
-- Normal blocks award their displayed value: `20`, `30`, `40`, and so on.
+- Normal blocks display remaining HP, but award their level score value when broken: `20`, `30`, `40`, and so on.
 - Power blocks receive a random score from `1` to `100` when the stage is generated.
 - `Infi-Block` awards a random score from `1` to `10` each time it is hit.
 - Stage number does not add a direct score bonus.
