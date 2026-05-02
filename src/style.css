@@ -247,7 +247,8 @@ body {
   gap: clamp(2px, 1vw, 4px) clamp(3px, 1.2vw, 5px);
   margin-top: 7px;
   direction: rtl;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   margin-left: auto;
 }
 
