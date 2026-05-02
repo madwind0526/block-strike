@@ -730,12 +730,11 @@ function applySlowBlock() {
 
 function updatePaddle(dt) {
   const previousCenter = state.paddle.x + state.paddle.w / 2;
-  const center = state.paddle.x + state.paddle.w / 2;
   const targetWidth = performance.now() < state.wideUntil ? Math.round(BASE_PADDLE_W * 1.3) : BASE_PADDLE_W;
   if (state.paddle.w !== targetWidth) {
     state.paddle.w += (targetWidth - state.paddle.w) * Math.min(1, dt * 10);
     if (Math.abs(state.paddle.w - targetWidth) < 0.5) state.paddle.w = targetWidth;
-    state.paddle.x = center - state.paddle.w / 2;
+    state.paddle.x = previousCenter - state.paddle.w / 2;
   }
 
   let dx = 0;

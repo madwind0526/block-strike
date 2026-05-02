@@ -212,12 +212,8 @@ body {
 }
 
 .score-panel .mini-panel {
-  min-height: 62px;
-  padding: 0;
-}
-
-.score-panel .mini-panel {
   min-height: 0;
+  padding: 0;
 }
 
 .lives-panel {
