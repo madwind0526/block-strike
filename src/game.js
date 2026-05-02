@@ -68,6 +68,7 @@ const faceNav = {
   left: document.getElementById("face-left"),
   right: document.getElementById("face-right"),
 };
+const faceStatus = document.getElementById("face-status");
 
 const overlay = {
   root: document.getElementById("screen-overlay"),
@@ -1654,6 +1655,7 @@ function updateHud() {
   updatePowerItemState(hud.bomb, counts.bomb);
   updatePowerItemState(hud.shield, counts.shield);
   updateCheatStatus();
+  updateFaceStatus();
 }
 
 function updatePowerItemState(valueElement, count) {
@@ -1669,6 +1671,23 @@ function updateCheatStatus() {
   cheatStatus.fullLives.classList.toggle("active", state.fullLivesCheat);
   cheatStatus.immortal.classList.toggle("active", state.immortal);
   cheatStatus.jumpTo.classList.toggle("active", state.jumpToCheat);
+}
+
+function remainingBreakableBlocks(face) {
+  return face.blocks.filter(block => block.alive && block.type !== "solid").length;
+}
+
+function updateFaceStatus() {
+  if (!state.stage || !faceStatus) return;
+  const labels = ["M", "L", "R"];
+  faceStatus.classList.toggle("hidden", state.mode !== "playing");
+  faceStatus.innerHTML = state.stage.faces.map((face, index) => {
+    const remaining = remainingBreakableBlocks(face);
+    const classes = ["face-count"];
+    if (index === state.stage.activeFaceIndex) classes.push("active");
+    if (remaining === 0) classes.push("cleared");
+    return `<span class="${classes.join(" ")}">${labels[index] || index + 1}: ${remaining}</span>`;
+  }).join("");
 }
 
 function countRemainingSpecials() {

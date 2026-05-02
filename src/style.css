@@ -563,6 +563,46 @@ body {
     0 2px 3px rgba(0, 0, 0, 0.78);
 }
 
+.face-status {
+  position: absolute;
+  left: 36px;
+  bottom: 134px;
+  z-index: 8;
+  display: grid;
+  gap: 3px;
+  padding: 4px 7px;
+  background: linear-gradient(90deg, rgba(2, 9, 18, 0.56), rgba(2, 9, 18, 0.14), transparent);
+  pointer-events: none;
+}
+
+.face-status.hidden {
+  display: none;
+}
+
+.face-count {
+  color: rgba(255, 255, 255, 0.88);
+  font-family: "DSDigital", Bahnschrift, "Cascadia Mono", monospace;
+  font-size: 16px;
+  line-height: 1;
+  text-align: left;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.86),
+    0 0 8px rgba(255, 255, 255, 0.08);
+}
+
+.face-count.active {
+  color: var(--hud-value);
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.88),
+    0 0 11px rgba(88, 236, 255, 0.58);
+}
+
+.face-count.cleared {
+  color: rgba(145, 156, 169, 0.55);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.75);
+}
+
 .debug-overlay {
   position: absolute;
   inset: 12px;
