@@ -988,14 +988,14 @@ body {
 
   .cheat-status {
     right: 42px;
-    bottom: 88px;
+    bottom: 108px;
     gap: 2px;
-    padding: 6px 8px 6px;
+    padding: 5px 7px 5px;
     border-radius: 8px;
   }
 
   .cheat-status div {
-    font-size: 13px;
+    font-size: 9px;
   }
 
   .screen-overlay {
