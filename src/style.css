@@ -1046,21 +1046,23 @@ body {
   }
 
   .rank-list {
-    width: 100%;
-    font-size: 19px;
+    width: min(88%, 296px);
+    justify-self: center;
+    margin: 0 auto;
+    font-size: 13px;
   }
 
   .rank-list.visible {
-    gap: 8px;
+    gap: 6px;
   }
 
   .rank-row {
-    grid-template-columns: 40px minmax(78px, 1fr) minmax(70px, 1fr) 48px;
+    grid-template-columns: 34px minmax(86px, 1fr) 58px 54px;
     gap: 3px;
   }
 
   .rank-header {
-    font-size: 15px;
+    font-size: 11px;
   }
 }
 
