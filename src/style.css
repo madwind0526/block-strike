@@ -1040,6 +1040,28 @@ body {
     letter-spacing: 0.02em;
     overflow-wrap: anywhere;
   }
+
+  .ranking-screen {
+    padding: 20px 14px;
+  }
+
+  .rank-list {
+    width: 100%;
+    font-size: 19px;
+  }
+
+  .rank-list.visible {
+    gap: 8px;
+  }
+
+  .rank-row {
+    grid-template-columns: 40px minmax(78px, 1fr) minmax(70px, 1fr) 48px;
+    gap: 3px;
+  }
+
+  .rank-header {
+    font-size: 15px;
+  }
 }
 
 @keyframes prompt-blink {
