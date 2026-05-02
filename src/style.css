@@ -1046,7 +1046,8 @@ body {
   }
 
   .rank-list {
-    width: min(88%, 296px);
+    width: max-content;
+    max-width: calc(100% - 28px);
     justify-self: center;
     margin: 0 auto;
     font-size: 13px;
@@ -1057,12 +1058,20 @@ body {
   }
 
   .rank-row {
-    grid-template-columns: 34px minmax(86px, 1fr) 58px 54px;
-    gap: 3px;
+    grid-template-columns: 4ch 10.5ch 8ch 5ch;
+    column-gap: 1.1ch;
   }
 
   .rank-header {
     font-size: 11px;
+  }
+
+  .rank-row span:nth-child(1) {
+    text-align: left;
+  }
+
+  .rank-row span:nth-child(4) {
+    text-align: right;
   }
 }
 
