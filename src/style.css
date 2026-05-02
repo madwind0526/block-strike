@@ -273,8 +273,35 @@ body {
 }
 
 @media (pointer: coarse), (max-width: 640px) {
+  .phone {
+    grid-template-rows: 145fr 758fr 122fr;
+    gap: 7px;
+    padding: 10px 10px 12px;
+  }
+
+  .top-board {
+    padding: 8px 10px 4px;
+    background:
+      radial-gradient(circle at 51% 34%, rgba(75, 168, 245, 0.12), transparent 44%),
+      linear-gradient(180deg, rgba(21, 52, 88, 0.34) 0%, rgba(7, 19, 33, 0) 86%);
+  }
+
+  .mini-panel {
+    min-height: 48px;
+  }
+
+  .score-panel .mini-panel,
+  .lives-panel {
+    min-height: 0;
+  }
+
+  .logo-title img {
+    max-width: 142px;
+  }
+
   #game {
-    width: 92%;
+    width: 86%;
+    align-self: start;
     justify-self: center;
   }
 }
