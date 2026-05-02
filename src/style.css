@@ -214,6 +214,7 @@ body {
   align-content: space-between;
   gap: clamp(5px, 1.8vw, 9px);
   justify-items: stretch;
+  padding-right: clamp(6px, 3vw, 17px);
 }
 
 .score-panel .mini-panel {
