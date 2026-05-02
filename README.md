@@ -17,12 +17,14 @@ Desktop:
 - Click or `Space`: launch the attached ball.
 - `Space`: hold or resume during play.
 - `Enter`: start, continue, or restart from menu screens.
+- `Up` / `Down`: switch between the two block faces.
 
 Mobile:
 
 - Touch drag: move the paddle.
 - Double tap the game screen: launch, hold, or resume.
 - Double tap menu screens: start, continue, or restart.
+- Swipe left or right on the game screen: switch between the two block faces.
 
 ## Gameplay
 
@@ -33,6 +35,8 @@ Mobile:
 - Mobile stages use 4 block rows.
 - Every 20 seconds after launch, block rows start rolling.
 - If a rolling block overlaps the ball, the ball is pushed downward to the nearest open position.
+- Each stage has two block faces. Clear both faces to advance.
+- Rolling time only runs on the currently visible face.
 
 ## Blocks
 

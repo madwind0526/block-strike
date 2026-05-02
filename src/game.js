@@ -7,6 +7,7 @@ const TOP_GAP = 70;
 const BLOCK_COLS = 7;
 const DEFAULT_BLOCK_ROWS = 5;
 const MOBILE_BLOCK_ROWS = 4;
+const FACE_COUNT = 2;
 const GRID_MARGIN_X = 26;
 const BLOCK_GAP = 4;
 const GRID_W = W - GRID_MARGIN_X * 2;
@@ -26,6 +27,8 @@ const LEADERBOARD_KEY = "rollingBlockStrikeLeaderboard";
 const LEADERBOARD_LIMIT = 10;
 const DOUBLE_TAP_MS = 340;
 const DOUBLE_TAP_DISTANCE = 32;
+const SWIPE_MIN_DISTANCE = 70;
+const SWIPE_MAX_VERTICAL_DRIFT = 45;
 const SOUND_POOL_SIZE = 6;
 const LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
 const SPECIAL_BLOCK_TOTAL = 5;
@@ -95,6 +98,7 @@ const keys = new Set();
 let pointerX = null;
 let lastTime = performance.now();
 let lastTap = { time: 0, x: 0, y: 0, scope: "" };
+let swipeStart = null;
 const imageTrims = new WeakMap();
 
 const state = {
@@ -486,12 +490,25 @@ function buildStage(number) {
   return {
     number,
     activeFaceIndex: 0,
-    faces: [0, 1, 2, 3].map(faceIndex => buildFace(number, faceIndex)),
+    faces: Array.from({ length: FACE_COUNT }, (_, faceIndex) => buildFace(number, faceIndex)),
   };
 }
 
 function activeFace() {
   return state.stage.faces[state.stage.activeFaceIndex];
+}
+
+function switchFace(direction) {
+  if (state.mode !== "playing" || !state.stage?.faces?.length) return;
+  if (debugUi.root && !debugUi.root.classList.contains("hidden")) return;
+  const faces = state.stage.faces;
+  const nextIndex = (state.stage.activeFaceIndex + direction + faces.length) % faces.length;
+  if (nextIndex === state.stage.activeFaceIndex) return;
+
+  state.stage.activeFaceIndex = nextIndex;
+  playSound("rollingFace");
+  resolveBallsAfterRolling();
+  setMessage(`Face ${nextIndex + 1}`, 0.8);
 }
 
 function updateRollingBlocks(dt) {
@@ -910,7 +927,9 @@ function finishGame() {
 }
 
 function isStageClear() {
-  return state.stage.faces[0].blocks.every(block => !block.alive || block.type === "solid");
+  return state.stage.faces.every(face =>
+    face.blocks.every(block => !block.alive || block.type === "solid")
+  );
 }
 
 function nextStage() {
@@ -1761,6 +1780,14 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     if (!event.repeat) handleSpaceAction();
   }
+  if (event.code === "ArrowUp" && state.mode === "playing") {
+    event.preventDefault();
+    if (!event.repeat) switchFace(1);
+  }
+  if (event.code === "ArrowDown" && state.mode === "playing") {
+    event.preventDefault();
+    if (!event.repeat) switchFace(-1);
+  }
   if (event.code === "KeyP" && state.mode === "playing") {
     togglePause();
   }
@@ -1812,6 +1839,9 @@ canvas.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   unlockAudio();
   updatePointerFromEvent(event);
+  if (isTouchPointer(event)) {
+    swipeStart = { x: event.clientX, y: event.clientY, time: performance.now() };
+  }
   canvas.setPointerCapture?.(event.pointerId);
   if (state.mode === "playing") {
     if (isTouchPointer(event)) {
@@ -1822,9 +1852,20 @@ canvas.addEventListener("pointerdown", (event) => {
   }
 });
 canvas.addEventListener("pointerup", (event) => {
+  if (isTouchPointer(event) && swipeStart && state.mode === "playing") {
+    const dx = event.clientX - swipeStart.x;
+    const dy = event.clientY - swipeStart.y;
+    const distance = Math.abs(dx);
+    const isSwipe = distance >= SWIPE_MIN_DISTANCE && Math.abs(dy) <= SWIPE_MAX_VERTICAL_DRIFT;
+    if (isSwipe) switchFace(dx < 0 ? 1 : -1);
+  }
+  swipeStart = null;
   canvas.releasePointerCapture?.(event.pointerId);
 });
-canvas.addEventListener("pointercancel", () => { pointerX = null; });
+canvas.addEventListener("pointercancel", () => {
+  pointerX = null;
+  swipeStart = null;
+});
 canvas.addEventListener("pointerleave", (event) => {
   if (!canvas.hasPointerCapture?.(event.pointerId)) pointerX = null;
 });
