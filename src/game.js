@@ -435,8 +435,10 @@ function buildSpecialMap(stageNumber, faceIndex) {
 
 function randomNormalNumber(stageNumber, faceIndex, row, col) {
   const value = rand(stageNumber * 197 + faceIndex * 53 + row * 23 + col * 31);
+  const minLevel = minNormalBlockLevel(stageNumber);
   const maxLevel = maxNormalBlockLevel(stageNumber);
-  return normalNumbers[Math.floor(value * maxLevel)];
+  const level = minLevel + Math.floor(value * (maxLevel - minLevel + 1));
+  return normalNumbers[level - 1];
 }
 
 function normalLevelForNumber(label) {
@@ -454,6 +456,11 @@ function normalShadeForNumber(label) {
 
 function maxNormalBlockLevel(stageNumber) {
   return clamp(2 + Math.floor((stageNumber - 1) / 5), 2, normalNumbers.length);
+}
+
+function minNormalBlockLevel(stageNumber) {
+  if (stageNumber < 35) return 1;
+  return clamp(1 + Math.floor((stageNumber - 30) / 5), 1, 5);
 }
 
 function infiBlockCount(stageNumber) {

@@ -147,6 +147,7 @@ These are the intended rules for the next gameplay implementation pass.
 - Implemented: Stage 6-10 normal blocks use level 1-3.
 - Implemented: Stage 11-15 normal blocks use level 1-4.
 - Implemented: every 5 stages, the maximum block level increases by 1.
+- Implemented: after Stage 35, the maximum level stays at 8 and the minimum block level rises every 5 stages until it reaches level 5.
 
 Block level values:
 
@@ -160,6 +161,20 @@ Block level values:
 - Level 8: `90`
 
 Each normal block requires hits equal to its level. For example, level 1 breaks in 1 hit, level 3 breaks in 3 hits, and level 8 breaks in 8 hits.
+
+Normal block level ranges:
+
+- Stage 1-5: Level 1-2
+- Stage 6-10: Level 1-3
+- Stage 11-15: Level 1-4
+- Stage 16-20: Level 1-5
+- Stage 21-25: Level 1-6
+- Stage 26-30: Level 1-7
+- Stage 31-34: Level 1-8
+- Stage 35-39: Level 2-8
+- Stage 40-44: Level 3-8
+- Stage 45-49: Level 4-8
+- Stage 50 and above: Level 5-8
 
 ### Infi-Block Rules
 
