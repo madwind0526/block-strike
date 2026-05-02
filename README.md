@@ -24,7 +24,7 @@ Mobile:
 - Touch drag: move the paddle.
 - Double tap the game screen: launch, hold, or resume.
 - Double tap menu screens: start, continue, or restart.
-- Swipe left or right on the game screen: switch between block faces.
+- Tap the left or right face buttons: switch between block faces.
 
 ## Gameplay
 

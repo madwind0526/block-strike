@@ -27,8 +27,6 @@ const LEADERBOARD_KEY = "rollingBlockStrikeLeaderboard";
 const LEADERBOARD_LIMIT = 10;
 const DOUBLE_TAP_MS = 340;
 const DOUBLE_TAP_DISTANCE = 32;
-const SWIPE_MIN_DISTANCE = 70;
-const SWIPE_MAX_VERTICAL_DRIFT = 45;
 const FACE_SWITCH_DURATION = 0.26;
 const SOUND_POOL_SIZE = 6;
 const LEGACY_LEADERBOARD_SAMPLE_DISABLED_KEY = "rollingBlockStrikeSampleDisabled";
@@ -104,7 +102,6 @@ const keys = new Set();
 let pointerX = null;
 let lastTime = performance.now();
 let lastTap = { time: 0, x: 0, y: 0, scope: "" };
-let swipeStart = null;
 const imageTrims = new WeakMap();
 
 const state = {
@@ -1963,9 +1960,6 @@ canvas.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   unlockAudio();
   updatePointerFromEvent(event);
-  if (isTouchPointer(event)) {
-    swipeStart = { x: event.clientX, y: event.clientY, time: performance.now() };
-  }
   canvas.setPointerCapture?.(event.pointerId);
   if (state.mode === "playing") {
     if (isTouchPointer(event)) {
@@ -1976,19 +1970,10 @@ canvas.addEventListener("pointerdown", (event) => {
   }
 });
 canvas.addEventListener("pointerup", (event) => {
-  if (isTouchPointer(event) && swipeStart && state.mode === "playing") {
-    const dx = event.clientX - swipeStart.x;
-    const dy = event.clientY - swipeStart.y;
-    const distance = Math.abs(dx);
-    const isSwipe = distance >= SWIPE_MIN_DISTANCE && Math.abs(dy) <= SWIPE_MAX_VERTICAL_DRIFT;
-    if (isSwipe) switchFace(dx < 0 ? 1 : -1);
-  }
-  swipeStart = null;
   canvas.releasePointerCapture?.(event.pointerId);
 });
 canvas.addEventListener("pointercancel", () => {
   pointerX = null;
-  swipeStart = null;
 });
 canvas.addEventListener("pointerleave", (event) => {
   if (!canvas.hasPointerCapture?.(event.pointerId)) {
