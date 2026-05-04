@@ -51,10 +51,12 @@ body {
 .phone {
   position: relative;
   width: min(530px, calc(100vw - 8px), calc((var(--app-height) - 8px) * 0.504));
+  height: min(calc(var(--app-height) - 8px), calc((100vw - 8px) * 1051 / 530), 1051px);
   max-height: calc(var(--app-height) - 8px);
   aspect-ratio: 530 / 1051;
+  container-type: inline-size;
   display: grid;
-  grid-template-rows: 166fr 773fr 92fr;
+  grid-template-rows: minmax(0, 166fr) minmax(0, 773fr) minmax(0, 92fr);
   gap: 10px;
   padding: 12px 12px 14px;
   border-radius: 34px;
@@ -71,6 +73,7 @@ body {
 
 .phone > * {
   min-width: 0;
+  min-height: 0;
 }
 
 .top-board {
@@ -251,17 +254,21 @@ body {
   position: relative;
   display: grid;
   width: 100%;
+  height: 100%;
   max-width: 100%;
   align-self: center;
   justify-self: stretch;
+  align-items: stretch;
   min-width: 0;
+  min-height: 0;
 }
 
 #game {
   display: block;
   width: 100%;
   max-width: 100%;
-  height: auto;
+  height: 100%;
+  max-height: 100%;
   aspect-ratio: 506 / 760;
   align-self: stretch;
   justify-self: stretch;
@@ -306,7 +313,7 @@ body {
 
 @media (pointer: coarse), (max-width: 640px) {
   .phone {
-    grid-template-rows: 145fr 758fr 122fr;
+    grid-template-rows: minmax(0, 145fr) minmax(0, 758fr) minmax(0, 122fr);
     gap: 7px;
     padding: 10px 10px 12px;
   }
@@ -400,12 +407,15 @@ body {
   align-items: center;
   gap: clamp(1px, 0.8vw, 3px);
   min-width: 0;
+  height: 100%;
+  min-height: 0;
 }
 
 .item {
   position: relative;
   min-width: 0;
-  min-height: clamp(50px, 12.8vw, 68px);
+  min-height: 0;
+  height: 100%;
   border: 2px solid rgba(107, 160, 222, 0.5);
   border-radius: 12px;
   display: flex;
@@ -429,8 +439,8 @@ body {
 }
 
 .item.pause img {
-  width: clamp(42px, 11vw, 54px);
-  height: clamp(42px, 11vw, 54px);
+  width: clamp(30px, 10.2cqw, 54px);
+  height: clamp(30px, 10.2cqw, 54px);
   display: block;
 }
 
@@ -463,8 +473,8 @@ body {
 }
 
 .item-icon {
-  width: clamp(31px, 8.4vw, 42px);
-  height: clamp(31px, 8.4vw, 42px);
+  width: clamp(25px, 7.9cqw, 42px);
+  height: clamp(25px, 7.9cqw, 42px);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -494,15 +504,15 @@ body {
   position: absolute;
   right: 4px;
   bottom: -7px;
-  min-width: clamp(20px, 5.2vw, 25px);
-  height: clamp(19px, 4.8vw, 23px);
+  min-width: clamp(17px, 4.7cqw, 25px);
+  height: clamp(16px, 4.3cqw, 23px);
   border-radius: 999px;
   display: grid;
   place-items: center;
   background: linear-gradient(180deg, #40d4ff, #0c82c8);
   border: 1px solid rgba(150, 231, 255, 0.75);
   color: #ffffff;
-  font-size: clamp(13px, 3.5vw, 16px);
+  font-size: clamp(11px, 3cqw, 16px);
   line-height: 1;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.58);
   box-shadow: 0 4px 7px rgba(0, 0, 0, 0.42);
